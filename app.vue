@@ -18,7 +18,7 @@
       <TresMeshToonMaterial :color="floor.color" />
     </Box>
     <TresAmbientLight :intensity=".75" />
-    <TresGridHelper  :args="[100, 5]" />
+    <TresGridHelper  :args="[250, 20]" />
   </TresCanvas>
 </template>
 
