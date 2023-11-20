@@ -26,6 +26,7 @@
       :ref="floor"
     >
       <Box
+        v-if="index != Object.keys(project.floors).length - 1"
         :args="[
           project.generalAttributes.floorSize.depth,
           floor.height,
@@ -39,12 +40,18 @@
       >
         <TresMeshToonMaterial :color="floor.color" />
       </Box>
+      <primitive 
+        v-else
+        :object="customThreeCreateRoof(floor, project.roof.width, project.roof.depth)"
+        :position="calculateRoofPosition(floor, index)"
+      >
+      </primitive>
       <!-- Doors -->
       <Box
         v-for="door in floor.doors"
         :key="door"
-        :args="calculateDoorSize(door)"
-        :position="calculateDoorPosition(door, floor)"
+        :args="calculateObjectSize(door)"
+        :position="calculateObjectPosition(door, floor)"
       >
         <TresMeshToonMaterial color="red" />
       </Box>
@@ -52,8 +59,8 @@
       <Box
         v-for="window in floor.windows"
         :key="window"
-        :args="calculateDoorSize(window)"
-        :position="calculateDoorPosition(window, floor)"
+        :args="calculateObjectSize(window)"
+        :position="calculateObjectPosition(window, floor)"
       >
         <TresMeshToonMaterial color="red" />
       </Box>
@@ -89,76 +96,76 @@ export default {
             color: "#E3829E",
             windows: {
               1: {
-                width: 10,
-                height: 12,
+                width: 9,
+                height: 21,
                 position: {
                   orientation: "front",
-                  x: 20,
-                  y: 5.5,
+                  x: 12,
+                  y: 0,
                 },
               },
               2: {
-                width: 10,
-                height: 12,
+                width: 9,
+                height: 21,
                 position: {
-                  orientation: "back",
-                  x: 20,
-                  y: 5.5,
+                  orientation: "front",
+                  x: 26,
+                  y: 0,
                 },
               },
               3: {
-                width: 10,
-                height: 12,
+                width: 9,
+                height: 21,
                 position: {
-                  orientation: "left",
-                  x: 20,
-                  y: 5.5,
+                  orientation: "front",
+                  x: 40,
+                  y: 0,
                 },
               },
               4: {
-                width: 10,
-                height: 12,
+                width: 20,
+                height: 21,
                 position: {
-                  orientation: "right",
-                  x: 20,
-                  y: 5.5,
+                  orientation: "back",
+                  x: 57.5,
+                  y: 0,
                 },
               },
             },
             doors: {
               1: {
-                width: 10,
+                width: 20,
                 height: 21,
                 position: {
                   orientation: "front",
-                  x: 57.5,
+                  x: 62,
                   y: 0,
                 },
               },
               2: {
-                width: 10,
+                width: 28,
                 height: 21,
                 position: {
-                  orientation: "back",
-                  x: 57.5,
+                  orientation: "front",
+                  x: 97,
                   y: 0,
                 },
               },
               3: {
-                width: 10,
+                width: 22,
                 height: 21,
                 position: {
-                  orientation: "left",
-                  x: 57.5,
+                  orientation: "back",
+                  x: 97,
                   y: 0,
                 },
               },
               4: {
-                width: 10,
+                width: 28,
                 height: 21,
                 position: {
-                  orientation: "right",
-                  x: 57.5,
+                  orientation: "back",
+                  x: 19,
                   y: 0,
                 },
               },
@@ -168,13 +175,69 @@ export default {
             storey: 1,
             height: 25,
             color: "#48ED33",
+            windows: {
+              1: {
+                width: 14,
+                height: 12,
+                position: {
+                  orientation: "front",
+                  x: 14,
+                  y: 8,
+                },
+              },
+              2: {
+                width: 14,
+                height: 12,
+                position: {
+                  orientation: "front",
+                  x: 38,
+                  y: 8,
+                },
+              },
+              3: {
+                width: 14,
+                height: 12,
+                position: {
+                  orientation: "front",
+                  x: 62,
+                  y: 8,
+                },
+              },
+              4: {
+                width: 16,
+                height: 13,
+                position: {
+                  orientation: "back",
+                  x: 19,
+                  y: 8,
+                },
+              },
+              5: {
+                width: 16,
+                height: 13,
+                position: {
+                  orientation: "back",
+                  x: 57.5,
+                  y: 8,
+                },
+              },
+              6: {
+                width: 16,
+                height: 13,
+                position: {
+                  orientation: "back",
+                  x: 95,
+                  y: 8,
+                },
+              },
+            },
             doors: {
               1: {
-                width: 10,
+                width: 16,
                 height: 21,
                 position: {
                   orientation: "front",
-                  x: 57.5,
+                  x: 97,
                   y: 0,
                 },
               },
@@ -186,27 +249,44 @@ export default {
             color: "#E5E5E5",
           },
         },
+        roof: {
+          type: "gable",
+          width: 115,
+          depth: 80,
+        }
       },
     };
   },
   
   methods: {
-    calculateDoorPosition(door, floor) {
+    calculateObjectPosition(object, floor) {
       const floorWidth = this.project.generalAttributes.floorSize.width
       const floorDepth = this.project.generalAttributes.floorSize.depth
       const floorHeight = floor.height
       const Storey = floor.storey
 
-      const doorPosition = calcOffsetPosition(door, floorWidth, floorDepth, floorHeight, Storey)
-      return doorPosition
+      const objectPosition = calcOffsetPosition(object, floorWidth, floorDepth, floorHeight, Storey)
+      return objectPosition
     },
 
-    calculateDoorSize(door) {
-      const doorSize = calcOffsetSize(door)
-      return  doorSize
+    calculateObjectSize(object) {
+      const objectSize = calcOffsetSize(object)
+      return objectSize
+    },
+    
+    calculateRoofPosition(roof, index) {
+      const floorWidth = this.project.generalAttributes.floorSize.width
+      const floorHeight = roof.height
+      const Storey = roof.storey
+
+      return [ 0, parseInt(index) * roof.height, -(floorWidth / 2) ]
     },
   },
 };
+</script>
+
+<script setup>
+import { customThreeCreateRoof } from './scripts/customThree';
 </script>
 
 <style>
