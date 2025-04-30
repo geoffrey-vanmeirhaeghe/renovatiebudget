@@ -257,7 +257,6 @@ export default {
       },
     };
   },
-  
   methods: {
     calculateObjectPosition(object, floor) {
       const floorWidth = this.project.generalAttributes.floorSize.width
