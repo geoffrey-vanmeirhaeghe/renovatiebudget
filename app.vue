@@ -27,7 +27,8 @@ export default {
           0: {
             storey: 0,
             height: 25,
-            color: "#E3829E",
+            heightPosition: 0,
+            color: "#EFEF",
             windows: {
               1: {
                 width: 9,
@@ -108,7 +109,8 @@ export default {
           1: {
             storey: 1,
             height: 25,
-            color: "#48ED33",
+            heightPosition: 25,
+            color: "#efef",
             windows: {
               1: {
                 width: 14,
@@ -164,9 +166,7 @@ export default {
                   y: 8,
                 },
               },
-            },
-            doors: {
-              1: {
+              7: {
                 width: 16,
                 height: 21,
                 position: {
@@ -176,51 +176,38 @@ export default {
                 },
               },
             },
+            // doors: {
+            //   1: {
+            //     width: 16,
+            //     height: 21,
+            //     position: {
+            //       orientation: "front",
+            //       x: 97,
+            //       y: 0,
+            //     },
+            //   },
+            // },
           },
           2: {
             storey: 2,
             height: 25,
-            color: "#E5E5E5",
+            heightPosition: 50,
+            color: "#efef",
           },
         },
         roof: {
           type: "gable",
           width: 115,
           depth: 80,
+          height: 25,
+          heightPosition: 50,
         }
       },
     };
   },
-  methods: {
-    calculateObjectPosition(object, floor) {
-      const floorWidth = this.project.generalAttributes.floorSize.width
-      const floorDepth = this.project.generalAttributes.floorSize.depth
-      const floorHeight = floor.height
-      const Storey = floor.storey
-
-      const objectPosition = calcOffsetPosition(object, floorWidth, floorDepth, floorHeight, Storey)
-      return objectPosition
-    },
-
-    calculateObjectSize(object) {
-      const objectSize = calcOffsetSize(object)
-      return objectSize
-    },
-    
-    calculateRoofPosition(roof, index) {
-      const floorWidth = this.project.generalAttributes.floorSize.width
-      const floorHeight = roof.height
-      const Storey = roof.storey
-
-      return [ 0, parseInt(index) * roof.height, -(floorWidth / 2) ]
-    },
-  },
 };
 </script>
 
-<script setup>
-import { customThreeCreateRoof } from './scripts/customThree';
-</script>
 
 <style>
 html,

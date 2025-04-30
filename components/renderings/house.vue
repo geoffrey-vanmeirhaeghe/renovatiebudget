@@ -1,5 +1,5 @@
 <template>
-    <TresCanvas window-size shadows preset="realistic" clear-color="#D4D4D4">
+    <TresCanvas window-size shadows preset="realistic" clear-color="#dfdf">
         <TresPerspectiveCamera
         :position="[
             project.generalAttributes.propertySize.width * 2.5,
@@ -34,7 +34,7 @@
             ]"
             :position="[
             0,
-            (parseInt(index) + 1) * floor.height - floor.height / 2,
+            floor.heightPosition + floor.height / 2,
             0,
             ]"
         >
@@ -42,8 +42,8 @@
         </Box>
         <primitive 
             v-else
-            :object="customThreeCreateRoof(floor, project.roof.width, project.roof.depth)"
-            :position="calculateRoofPosition(floor, index)"
+            :object="customThreeCreateRoof(project.roof)"
+            :position="calculateRoofPosition(project.roof, index)"
         >
         </primitive>
         <!-- Doors -->
@@ -53,7 +53,7 @@
             :args="calculateObjectSize(door)"
             :position="calculateObjectPosition(door, floor)"
         >
-            <TresMeshToonMaterial color="red" />
+            <TresMeshToonMaterial color="#5c6063" />
         </Box>
         <!-- Windows -->
         <Box
@@ -62,7 +62,7 @@
             :args="calculateObjectSize(window)"
             :position="calculateObjectPosition(window, floor)"
         >
-            <TresMeshToonMaterial color="red" />
+            <TresMeshToonMaterial color="#bdd7ff" />
         </Box>
         </TresGroup>
         <TresAmbientLight :intensity="0.75" />
@@ -95,7 +95,7 @@ export default {
 
     calculateRoofPosition(roof, index) {
       const floorWidth = this.project.generalAttributes.floorSize.width
-      return [0, parseInt(index) * roof.height, -(floorWidth / 2)]
+      return [0, roof.heightPosition, -(floorWidth / 2)]
     },
 
     customThreeCreateRoof, // expose it as method or use directly in template
