@@ -2,17 +2,17 @@
     <TresCanvas window-size shadows preset="realistic" clear-color="#dfdf">
         <TresPerspectiveCamera
         :position="[
-            project.generalAttributes.propertySize.width * 2.5,
-            100,
-            project.generalAttributes.propertySize.depth * 0.5,
+            (project.generalAttributes.propertySize.width / 100) * 2.5,
+            1,
+            (project.generalAttributes.propertySize.depth / 100) * 0.5,
         ]"
         />
         <OrbitControls />
         <!-- Surface -->
         <Plane
         :args="[
-            project.generalAttributes.propertySize.depth,
-            project.generalAttributes.propertySize.width,
+            project.generalAttributes.propertySize.depth / 100,
+            project.generalAttributes.propertySize.width / 100,
         ]"
         :position="[0, 0, 0]"
         >
@@ -28,13 +28,13 @@
         <Box
             v-if="index != Object.keys(project.floors).length - 1"
             :args="[
-            project.generalAttributes.floorSize.depth,
-            floor.height,
-            project.generalAttributes.floorSize.width,
+            project.generalAttributes.floorSize.depth / 100,
+            floor.height / 100,
+            project.generalAttributes.floorSize.width / 100,
             ]"
             :position="[
             0,
-            floor.heightPosition + floor.height / 2,
+            (floor.heightPosition + floor.height / 2) / 100,
             0,
             ]"
             @click="selectFloor(index, floor)"
@@ -75,7 +75,7 @@
         </Box>
         </TresGroup>
         <TresAmbientLight :intensity="0.75" />
-        <TresGridHelper :args="[250, 20]" />
+        <TresGridHelper :args="[2.5, 20]" />
     </TresCanvas>
 </template>
   

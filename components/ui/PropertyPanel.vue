@@ -64,21 +64,55 @@
       </div>
     </div>
 
-    <!-- Style Presets -->
+    <!-- Position Controls -->
     <div v-if="isWindowOrDoor" class="property-section">
-      <h4>Quick Sizes</h4>
-      <div class="style-options">
-        <button 
-          v-for="preset in getStyleOptions()" 
-          :key="preset.name"
-          @click="applyPreset(preset)"
-          class="style-btn"
+      <h4>Position</h4>
+      
+      <div class="property-group">
+        <label>X Position:</label>
+        <input 
+          type="range" 
+          :min="0" 
+          :max="getMaxXPosition()" 
+          :step="1"
+          :value="selectedObject.object.position.x"
+          @input="updateXPosition($event.target.value)"
+          class="slider"
         >
-          {{ preset.name }}
-          <small>{{ preset.width }}×{{ preset.height }}cm</small>
-        </button>
+        <input 
+          type="number"
+          :min="0"
+          :max="getMaxXPosition()"
+          :value="selectedObject.object.position.x"
+          @input="updateXPosition($event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">cm</span>
+      </div>
+      
+      <div class="property-group">
+        <label>Y Position:</label>
+        <input 
+          type="range" 
+          :min="0" 
+          :max="getMaxYPosition()" 
+          :step="1"
+          :value="selectedObject.object.position.y"
+          @input="updateYPosition($event.target.value)"
+          class="slider"
+        >
+        <input 
+          type="number"
+          :min="0"
+          :max="getMaxYPosition()"
+          :value="selectedObject.object.position.y"
+          @input="updateYPosition($event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">cm</span>
       </div>
     </div>
+
 
     <!-- Floor Properties -->
     <div v-if="selectedObject.type === 'floor'" class="property-section">
@@ -173,6 +207,16 @@ const getDimensionRange = (dimension: 'WIDTH' | 'HEIGHT') => {
   return range || { min: 20, max: 400 }
 }
 
+const getMaxXPosition = () => {
+  if (!currentProject.value) return 1000
+  return currentProject.value.generalAttributes.floorSize.width
+}
+
+const getMaxYPosition = () => {
+  if (!currentProject.value) return 250
+  return currentProject.value.generalAttributes.floorSize.width / 5 // Reasonable height limit
+}
+
 const getStyleOptions = () => {
   if (!selectedObject.value) return []
   
@@ -235,6 +279,44 @@ const updateFloorColor = (color: string) => {
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   updatedProject.floors[selectedObject.value.id].color = color
+  
+  updateProject(updatedProject)
+}
+
+const updateXPosition = (value: string) => {
+  if (!selectedObject.value || !currentProject.value) return
+  
+  const numValue = parseInt(value)
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  if (selectedObject.value.floorId) {
+    const floor = updatedProject.floors[selectedObject.value.floorId]
+    if (selectedObject.value.type === 'window' && floor.windows) {
+      floor.windows[selectedObject.value.id].position.x = numValue
+    } else if (selectedObject.value.type === 'door' && floor.doors) {
+      floor.doors[selectedObject.value.id].position.x = numValue
+    }
+  }
+  
+  updateProject(updatedProject)
+}
+
+const updateYPosition = (value: string) => {
+  if (!selectedObject.value || !currentProject.value) return
+  
+  const numValue = parseInt(value)
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  if (selectedObject.value.floorId) {
+    const floor = updatedProject.floors[selectedObject.value.floorId]
+    if (selectedObject.value.type === 'window' && floor.windows) {
+      floor.windows[selectedObject.value.id].position.y = numValue
+    } else if (selectedObject.value.type === 'door' && floor.doors) {
+      floor.doors[selectedObject.value.id].position.y = numValue
+    }
+  }
   
   updateProject(updatedProject)
 }

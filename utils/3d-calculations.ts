@@ -10,33 +10,41 @@ export const calcOffsetPosition = (
   floorHeight: number, 
   storey: number
 ): [number, number, number] => {
+  // Convert all dimensions from cm to meters
+  const floorWidthM = cmToThreeUnits(floorWidth)
+  const floorDepthM = cmToThreeUnits(floorDepth)
+  const floorHeightM = cmToThreeUnits(floorHeight)
+  const shapeHeightM = cmToThreeUnits(shape.height)
+  const positionXM = cmToThreeUnits(shape.position.x)
+  const positionYM = cmToThreeUnits(shape.position.y)
+  
   let x: number
   let y: number
   let z: number
 
   switch (shape.position.orientation) {
     case 'front':
-      x = -(shape.position.x - (floorWidth / 2))
-      y = shape.position.y + (shape.height / 2) + (floorHeight * storey)
-      z = floorDepth / 2
+      x = -(positionXM - (floorWidthM / 2))
+      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
+      z = floorDepthM / 2
       return [z, y, x]
 
     case 'back':
-      x = (shape.position.x - (floorWidth / 2))
-      y = shape.position.y + (shape.height / 2) + (floorHeight * storey)
-      z = -floorDepth / 2
+      x = (positionXM - (floorWidthM / 2))
+      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
+      z = -floorDepthM / 2
       return [z, y, x]
 
     case 'left':
-      x = (floorWidth / 2)
-      y = shape.position.y + (shape.height / 2) + (floorHeight * storey)
-      z = (shape.position.x - (floorWidth / 2))
+      x = (floorWidthM / 2)
+      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
+      z = (positionXM - (floorWidthM / 2))
       return [z, y, x]
 
     case 'right':
-      x = -(floorWidth / 2)
-      y = shape.position.y + (shape.height / 2) + (floorHeight * storey)
-      z = -(shape.position.x - (floorWidth / 2))
+      x = -(floorWidthM / 2)
+      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
+      z = -(positionXM - (floorWidthM / 2))
       return [z, y, x]
 
     default:
@@ -45,19 +53,30 @@ export const calcOffsetPosition = (
 }
 
 /**
+ * Convert centimeters to 3D units (assuming 1 Three.js unit = 1 meter)
+ */
+const cmToThreeUnits = (cm: number): number => {
+  return cm / 100 // Convert cm to meters
+}
+
+/**
  * Calculate 3D size for windows/doors based on orientation
  */
 export const calcOffsetSize = (shape: WindowOrDoor): [number, number, number] => {
-  const WALL_THICKNESS = 0.5
+  const WALL_THICKNESS = 0.005 // 0.5cm in meters
+  
+  // Convert dimensions from cm to meters
+  const widthM = cmToThreeUnits(shape.width)
+  const heightM = cmToThreeUnits(shape.height)
 
   switch (shape.position.orientation) {
     case 'front':
     case 'back':
-      return [WALL_THICKNESS, shape.height, shape.width]
+      return [WALL_THICKNESS, heightM, widthM]
 
     case 'left':
     case 'right':
-      return [shape.width, shape.height, WALL_THICKNESS]
+      return [widthM, heightM, WALL_THICKNESS]
 
     default:
       throw new Error(`Invalid orientation: ${shape.position.orientation}`)
@@ -71,5 +90,5 @@ export const calculateRoofPosition = (
   roof: { heightPosition: number },
   floorWidth: number
 ): [number, number, number] => {
-  return [0, roof.heightPosition, -(floorWidth / 2)]
+  return [0, cmToThreeUnits(roof.heightPosition), -(cmToThreeUnits(floorWidth) / 2)]
 }
