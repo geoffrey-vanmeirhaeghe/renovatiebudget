@@ -1,211 +1,19 @@
 <template>
-  <House :project="project" />
+  <div class="app-container">
+    <House v-if="currentProject" :project="currentProject" />
+    <PropertyPanel />
+  </div>
 </template>
 
-<script>
-import House from "~/components/renderings/house.vue";
+<script setup lang="ts">
+import { mockProject } from '~/data/mockProject'
+import House from '~/components/renderings/house.vue'
+import PropertyPanel from '~/components/ui/PropertyPanel.vue'
 
-export default {
-  components: {
-    House,
-  },
+const { currentProject, updateProject } = useProject()
 
-  data() {
-    return {
-      project: {
-        generalAttributes: {
-          propertySize: {
-            width: 200,
-            depth: 200,
-          },
-          floorSize: {
-            width: 115,
-            depth: 105,
-          },
-        },
-        floors: {
-          0: {
-            storey: 0,
-            height: 25,
-            heightPosition: 0,
-            color: "#EFEF",
-            windows: {
-              1: {
-                width: 9,
-                height: 21,
-                position: {
-                  orientation: "front",
-                  x: 12,
-                  y: 0,
-                },
-              },
-              2: {
-                width: 9,
-                height: 21,
-                position: {
-                  orientation: "front",
-                  x: 26,
-                  y: 0,
-                },
-              },
-              3: {
-                width: 9,
-                height: 21,
-                position: {
-                  orientation: "front",
-                  x: 40,
-                  y: 0,
-                },
-              },
-              4: {
-                width: 20,
-                height: 21,
-                position: {
-                  orientation: "back",
-                  x: 57.5,
-                  y: 0,
-                },
-              },
-            },
-            doors: {
-              1: {
-                width: 20,
-                height: 21,
-                position: {
-                  orientation: "front",
-                  x: 62,
-                  y: 0,
-                },
-              },
-              2: {
-                width: 28,
-                height: 21,
-                position: {
-                  orientation: "front",
-                  x: 97,
-                  y: 0,
-                },
-              },
-              3: {
-                width: 22,
-                height: 21,
-                position: {
-                  orientation: "back",
-                  x: 97,
-                  y: 0,
-                },
-              },
-              4: {
-                width: 28,
-                height: 21,
-                position: {
-                  orientation: "back",
-                  x: 19,
-                  y: 0,
-                },
-              },
-            },
-          },
-          1: {
-            storey: 1,
-            height: 25,
-            heightPosition: 25,
-            color: "#efef",
-            windows: {
-              1: {
-                width: 14,
-                height: 12,
-                position: {
-                  orientation: "front",
-                  x: 14,
-                  y: 8,
-                },
-              },
-              2: {
-                width: 14,
-                height: 12,
-                position: {
-                  orientation: "front",
-                  x: 38,
-                  y: 8,
-                },
-              },
-              3: {
-                width: 14,
-                height: 12,
-                position: {
-                  orientation: "front",
-                  x: 62,
-                  y: 8,
-                },
-              },
-              4: {
-                width: 16,
-                height: 13,
-                position: {
-                  orientation: "back",
-                  x: 19,
-                  y: 8,
-                },
-              },
-              5: {
-                width: 16,
-                height: 13,
-                position: {
-                  orientation: "back",
-                  x: 57.5,
-                  y: 8,
-                },
-              },
-              6: {
-                width: 16,
-                height: 13,
-                position: {
-                  orientation: "back",
-                  x: 95,
-                  y: 8,
-                },
-              },
-              7: {
-                width: 16,
-                height: 21,
-                position: {
-                  orientation: "front",
-                  x: 97,
-                  y: 0,
-                },
-              },
-            },
-            // doors: {
-            //   1: {
-            //     width: 16,
-            //     height: 21,
-            //     position: {
-            //       orientation: "front",
-            //       x: 97,
-            //       y: 0,
-            //     },
-            //   },
-            // },
-          },
-          2: {
-            storey: 2,
-            height: 25,
-            heightPosition: 50,
-            color: "#efef",
-          },
-        },
-        roof: {
-          type: "gable",
-          width: 115,
-          depth: 80,
-          height: 25,
-          heightPosition: 50,
-        }
-      },
-    };
-  },
-};
+// Initialize with mock data immediately
+updateProject(mockProject)
 </script>
 
 
@@ -216,9 +24,53 @@ body {
   padding: 0;
   height: 100%;
   width: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
 }
+
 #app {
   height: 100%;
   width: 100%;
+}
+
+.app-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 1rem;
+}
+
+.loading-spinner {
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.error-message {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.retry-button {
+  px: 1rem;
+  py: 0.5rem;
+  bg: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background-color: #2563eb;
 }
 </style>

@@ -37,32 +37,41 @@
             floor.heightPosition + floor.height / 2,
             0,
             ]"
+            @click="selectFloor(index, floor)"
         >
-            <TresMeshToonMaterial :color="floor.color" />
+            <TresMeshToonMaterial 
+                :color="isSelected('floor', index, null) ? '#ffaa44' : floor.color" 
+            />
         </Box>
         <primitive 
             v-else
             :object="customThreeCreateRoof(project.roof)"
-            :position="calculateRoofPosition(project.roof, index)"
+            :position="getRoofPosition(project.roof, index)"
         >
         </primitive>
         <!-- Doors -->
         <Box
-            v-for="door in floor.doors"
-            :key="door"
+            v-for="(door, doorId) in floor.doors"
+            :key="doorId"
             :args="calculateObjectSize(door)"
             :position="calculateObjectPosition(door, floor)"
+            @click="selectDoor(doorId, door, index)"
         >
-            <TresMeshToonMaterial color="#5c6063" />
+            <TresMeshToonMaterial 
+                :color="isSelected('door', doorId, index) ? '#ff6b35' : '#5c6063'" 
+            />
         </Box>
         <!-- Windows -->
         <Box
-            v-for="window in floor.windows"
-            :key="window"
+            v-for="(window, windowId) in floor.windows"
+            :key="windowId"
             :args="calculateObjectSize(window)"
             :position="calculateObjectPosition(window, floor)"
+            @click="selectWindow(windowId, window, index)"
         >
-            <TresMeshToonMaterial color="#bdd7ff" />
+            <TresMeshToonMaterial 
+                :color="isSelected('window', windowId, index) ? '#ff6b35' : '#bdd7ff'" 
+            />
         </Box>
         </TresGroup>
         <TresAmbientLight :intensity="0.75" />
@@ -70,38 +79,68 @@
     </TresCanvas>
 </template>
   
-<script>
-import { TresCanvas } from "@tresjs/core";
-import { calcOffsetPosition } from '~/scripts/main.js';
-import { calcOffsetSize } from '~/scripts/main.js';
-import { customThreeCreateRoof } from '~/scripts/customThree';
+<script setup lang="ts">
+import type { Project } from '~/types/project'
+import { calcOffsetPosition, calcOffsetSize, calculateRoofPosition } from '~/utils/3d-calculations'
+import { customThreeCreateRoof } from '~/scripts/customThree'
 
-export default {
-  name: 'House',
-  props: ["project"],
-  methods: {
-    calculateObjectPosition(object, floor) {
-      const floorWidth = this.project.generalAttributes.floorSize.width
-      const floorDepth = this.project.generalAttributes.floorSize.depth
-      const floorHeight = floor.height
-      const Storey = floor.storey
+interface Props {
+  project: Project
+}
 
-      return calcOffsetPosition(object, floorWidth, floorDepth, floorHeight, Storey)
-    },
+const props = defineProps<Props>()
+const { selectedObject, selectObject, clearSelection } = useSelection()
 
-    calculateObjectSize(object) {
-      return calcOffsetSize(object)
-    },
+const calculateObjectPosition = (object: any, floor: any) => {
+  const floorWidth = props.project.generalAttributes.floorSize.width
+  const floorDepth = props.project.generalAttributes.floorSize.depth
+  const floorHeight = floor.height
+  const storey = floor.storey
 
-    calculateRoofPosition(roof, index) {
-      const floorWidth = this.project.generalAttributes.floorSize.width
-      return [0, roof.heightPosition, -(floorWidth / 2)]
-    },
+  return calcOffsetPosition(object, floorWidth, floorDepth, floorHeight, storey)
+}
 
-    customThreeCreateRoof, // expose it as method or use directly in template
-  },
-};
-</script>
+const calculateObjectSize = (object: any) => {
+  return calcOffsetSize(object)
+}
+
+const getRoofPosition = (roof: any, index: number) => {
+  const floorWidth = props.project.generalAttributes.floorSize.width
+  return calculateRoofPosition(roof, floorWidth)
+}
+
+const selectWindow = (windowId: string, window: any, floorIndex: string) => {
+  selectObject({
+    id: windowId,
+    type: 'window',
+    object: window,
+    floorId: floorIndex
+  })
+}
+
+const selectDoor = (doorId: string, door: any, floorIndex: string) => {
+  selectObject({
+    id: doorId,
+    type: 'door',
+    object: door,
+    floorId: floorIndex
+  })
+}
+
+const selectFloor = (floorId: string, floor: any) => {
+  selectObject({
+    id: floorId,
+    type: 'floor',
+    object: floor
+  })
+}
+
+const isSelected = (type: string, id: string, floorId: string | null) => {
+  if (!selectedObject.value) return false
+  return selectedObject.value.type === type && 
+         selectedObject.value.id === id &&
+         selectedObject.value.floorId === floorId
+}</script>
 
 <style>
 html,
