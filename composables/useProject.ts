@@ -7,17 +7,21 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 
 export const useProject = () => {
-  const loadProject = async (projectId?: string): Promise<void> => {
+  const { loadProject: loadStrapiProject } = useStrapi()
+  
+  const loadProject = async (projectId?: string, useStrapi = false): Promise<void> => {
     isLoading.value = true
     error.value = null
 
     try {
-      // For now, load mock data
-      // Later this will be replaced with API calls to Strapi      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      currentProject.value = mockProject
+      if (useStrapi && projectId) {
+        // Load from Strapi API
+        currentProject.value = await loadStrapiProject(projectId)
+      } else {
+        // Load mock data (default for development)
+        await new Promise(resolve => setTimeout(resolve, 100))
+        currentProject.value = mockProject
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load project'
       console.error('Error loading project:', err)

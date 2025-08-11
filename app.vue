@@ -1,19 +1,11 @@
 <template>
-  <div class="app-container">
-    <House v-if="currentProject" :project="currentProject" />
-    <PropertyPanel />
+  <div>
+    <NuxtPage />
   </div>
 </template>
 
 <script setup lang="ts">
-import { mockProject } from '~/data/mockProject'
-import House from '~/components/renderings/house.vue'
-import PropertyPanel from '~/components/ui/PropertyPanel.vue'
-
-const { currentProject, updateProject } = useProject()
-
-// Initialize with mock data immediately
-updateProject(mockProject)
+// App.vue now just serves as layout wrapper
 </script>
 
 

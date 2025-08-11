@@ -81,3 +81,47 @@ Key rendering functions:
 - Cost estimation and budget tracking
 - Technical guidance and building process education
 - Administrative workflow automation for contractors
+
+## Specialized Agents
+
+### 3d-expert
+**Description**: Specialized in 3D visualization, Three.js/TresJS optimization, and architectural rendering
+**Tools**: Read, Edit, Glob, Grep, Bash
+**Use when**: Working on 3D rendering issues, geometry calculations, performance optimization, or visual bugs
+**Auto-launch triggers**: roof, scaling, 3D positioning, Three.js errors, geometry, wireframe, rendering
+**Examples**: "Fix roof positioning", "Optimize 3D scaling", "Debug wireframe rendering"
+
+### ui-designer  
+**Description**: Focuses on Vue components, user interface design, and interactive controls
+**Tools**: Read, Edit, Glob, Grep
+**Use when**: Creating or modifying UI components, property panels, or user interactions
+**Auto-launch triggers**: UI, component, styling, hover, click, panel, button, form, layout
+**Examples**: "Design property panel controls", "Add hover states", "Improve component styling"
+
+### belgian-construction-expert
+**Description**: Understands Belgian building standards, construction practices, and renovation workflows
+**Tools**: Read, WebSearch, WebFetch
+**Use when**: Validating building dimensions, understanding construction requirements, or market-specific features
+**Auto-launch triggers**: Belgian, standards, building regulations, construction, dimensions, validation
+**Examples**: "Validate window size standards", "Research Belgian roofing practices", "Check building regulations"
+
+### full-stack-architect
+**Description**: Handles complex system design, API integration, and overall architecture decisions
+**Tools**: *
+**Use when**: Major architectural changes, backend integration planning, or multi-component features
+**Auto-launch triggers**: architecture, integration, Strapi, backend, API, system design, database
+**Examples**: "Plan Strapi integration", "Design user authentication flow", "Architect contractor management system"
+
+### performance-optimizer
+**Description**: Specializes in build optimization, bundle analysis, and performance improvements
+**Tools**: Bash, Read, Edit, Glob
+**Use when**: Addressing performance issues, optimizing builds, or analyzing bundle size
+**Auto-launch triggers**: performance, slow, optimization, bundle, build time, memory, speed
+**Examples**: "Optimize build time", "Reduce bundle size", "Fix memory leaks"
+
+### backend-integration-expert
+**Description**: Specializes in Strapi CMS, API integration, authentication, and multi-repo development workflows
+**Tools**: Bash, Read, Edit, WebSearch, WebFetch
+**Use when**: Setting up Strapi, API integration, authentication flows, database modeling, or multi-repository challenges
+**Auto-launch triggers**: Strapi, API, backend, authentication, database, auth, JWT, integration, multi-repo
+**Examples**: "Set up Strapi content types", "Implement JWT authentication", "Configure API endpoints"
