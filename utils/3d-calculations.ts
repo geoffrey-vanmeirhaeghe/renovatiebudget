@@ -84,11 +84,12 @@ export const calcOffsetSize = (shape: WindowOrDoor): [number, number, number] =>
 }
 
 /**
- * Calculate roof position based on floor dimensions
+ * Calculate roof position based on roof dimensions
  */
 export const calculateRoofPosition = (
-  roof: { heightPosition: number },
+  roof: { heightPosition: number, width: number },
   floorWidth: number
 ): [number, number, number] => {
-  return [0, cmToThreeUnits(roof.heightPosition), -(cmToThreeUnits(floorWidth) / 2)]
+  // Center the roof properly - use roof width instead of floor width for better alignment
+  return [0, cmToThreeUnits(roof.heightPosition), -(cmToThreeUnits(roof.width) / 2)]
 }

@@ -6,15 +6,23 @@
 </template>
 
 <script setup lang="ts">
-import { mockProject } from '~/data/mockProject'
 import House from '~/components/renderings/house.vue'
 import PropertyPanel from '~/components/ui/PropertyPanel.vue'
 
-const { currentProject, updateProject } = useProject()
+const { currentProject, loadProject } = useProject()
 
-// Initialize with mock data immediately
-onMounted(() => {
-  updateProject(mockProject)
+// Load Strapi data by default
+// TODO: Replace hard-coded documentId with dynamic project selection
+// See TECHNICAL_DEBT.md for details
+onMounted(async () => {
+  try {
+    // Load project from Strapi using known documentId
+    await loadProject('ca66f5looy2mij5rua9yj987', true)
+  } catch (error) {
+    console.error('Failed to load Strapi data, falling back to mock data:', error)
+    // Fallback to mock data if Strapi is unavailable
+    await loadProject()
+  }
 })
 </script>
 

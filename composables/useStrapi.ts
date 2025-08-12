@@ -7,13 +7,49 @@ interface StrapiConfig {
 
 // Transform Strapi Floor data to frontend format
 const transformFloor = (strapiFloor: any): Floor => {
+  
+  // Add some default windows and doors since they're not in Strapi yet
+  const defaultWindows = strapiFloor.Windows || [
+    {
+      Dimensions: {
+        width: 90,
+        height: 210,
+        position: { orientation: 'front', x: 120, y: 0 }
+      }
+    },
+    {
+      Dimensions: {
+        width: 120,
+        height: 210,
+        position: { orientation: 'front', x: 500, y: 0 }
+      }
+    },
+    {
+      Dimensions: {
+        width: 90,
+        height: 210,
+        position: { orientation: 'back', x: 300, y: 0 }
+      }
+    }
+  ]
+  
+  const defaultDoors = strapiFloor.Doors || [
+    {
+      Dimensions: {
+        width: 90,
+        height: 210,
+        position: { orientation: 'front', x: 800, y: 0 }
+      }
+    }
+  ]
+  
   return {
     storey: strapiFloor.Storey,
     height: strapiFloor.Dimensions?.height || 250,
     heightPosition: strapiFloor.HeightPosition || (strapiFloor.Storey * 250),
     color: strapiFloor.Color || '#efef',
-    windows: transformWindowsOrDoors(strapiFloor.Windows || []),
-    doors: transformWindowsOrDoors(strapiFloor.Doors || [])
+    windows: transformWindowsOrDoors(defaultWindows),
+    doors: transformWindowsOrDoors(defaultDoors)
   }
 }
 
@@ -61,7 +97,7 @@ const transformProject = (strapiProject: any): Project => {
     floors['0'] = transformFloor(building.floor)
   }
   
-  return {
+  const transformedProject = {
     id: strapiProject.documentId, // Use documentId for frontend
     name: strapiProject.ProjectName,
     generalAttributes: strapiProject.GeneralAttributes || {
@@ -69,8 +105,17 @@ const transformProject = (strapiProject: any): Project => {
       floorSize: { width: 1150, depth: 1050 }
     },
     floors,
-    roof: transformRoof(building?.Roof?.[0])
+    roof: building?.Roof?.[0] ? transformRoof(building.Roof[0]) : undefined
   }
+
+  // Fix roof height position to sit on top of the actual floors
+  if (transformedProject.roof && Object.keys(floors).length > 0) {
+    const highestFloor = Object.values(floors).reduce((max, floor) => 
+      Math.max(max, floor.heightPosition + floor.height), 0)
+    transformedProject.roof.heightPosition = highestFloor
+  }
+
+  return transformedProject
 }
 
 export const useStrapi = () => {

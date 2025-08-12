@@ -1,5 +1,5 @@
 import type { Project } from '~/types/project'
-import { mockProject } from '~/data/mockProject'
+import { mockProject, mockProject1, mockProject2, mockProject3 } from '~/data/mockProject'
 
 // Global state for project
 const currentProject = ref<Project | null>(null)
@@ -9,7 +9,7 @@ const error = ref<string | null>(null)
 export const useProject = () => {
   const { loadProject: loadStrapiProject } = useStrapi()
   
-  const loadProject = async (projectId?: string, useStrapi = false): Promise<void> => {
+  const loadProject = async (projectId?: string, useStrapi = false, mockScenario?: 1 | 2 | 3): Promise<void> => {
     isLoading.value = true
     error.value = null
 
@@ -20,7 +20,21 @@ export const useProject = () => {
       } else {
         // Load mock data (default for development)
         await new Promise(resolve => setTimeout(resolve, 100))
-        currentProject.value = mockProject
+        
+        // Select mock project based on scenario
+        switch (mockScenario) {
+          case 1:
+            currentProject.value = mockProject1
+            break
+          case 2:
+            currentProject.value = mockProject2
+            break
+          case 3:
+            currentProject.value = mockProject3
+            break
+          default:
+            currentProject.value = mockProject // Default fallback
+        }
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load project'

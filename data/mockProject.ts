@@ -1,8 +1,116 @@
 import type { Project } from '~/types/project'
 
-export const mockProject: Project = {
+// Scenario 1: Single Floor + Roof House (Ground floor only + separate roof)
+export const mockProject1: Project = {
   id: 'mock-project-1',
-  name: 'Sample Belgian House Renovation',
+  name: 'Single Story Belgian House',
+  generalAttributes: {
+    propertySize: {
+      width: 1800,
+      depth: 1600,
+    },
+    floorSize: {
+      width: 1000,
+      depth: 800,
+    },
+  },
+  floors: {
+    '0': {
+      storey: 0,
+      height: 280,
+      heightPosition: 0,
+      color: '#f8f9fa',
+      windows: {
+        '1': {
+          width: 120,
+          height: 210,
+          position: {
+            orientation: 'front',
+            x: 150,
+            y: 20,
+          },
+        },
+        '2': {
+          width: 120,
+          height: 210,
+          position: {
+            orientation: 'front',
+            x: 350,
+            y: 20,
+          },
+        },
+        '3': {
+          width: 180,
+          height: 210,
+          position: {
+            orientation: 'back',
+            x: 200,
+            y: 20,
+          },
+        },
+        '4': {
+          width: 180,
+          height: 210,
+          position: {
+            orientation: 'back',
+            x: 600,
+            y: 20,
+          },
+        },
+        '5': {
+          width: 100,
+          height: 150,
+          position: {
+            orientation: 'left',
+            x: 250,
+            y: 40,
+          },
+        },
+        '6': {
+          width: 100,
+          height: 150,
+          position: {
+            orientation: 'right',
+            x: 450,
+            y: 40,
+          },
+        },
+      },
+      doors: {
+        '1': {
+          width: 220,
+          height: 210,
+          position: {
+            orientation: 'front',
+            x: 650,
+            y: 0,
+          },
+        },
+        '2': {
+          width: 240,
+          height: 210,
+          position: {
+            orientation: 'back',
+            x: 450,
+            y: 0,
+          },
+        },
+      },
+    },
+  },
+  roof: {
+    type: 'gable',
+    width: 1000,
+    depth: 800,
+    height: 320,
+    heightPosition: 280,
+  },
+}
+
+// Scenario 2: Two Floor + Roof House (Ground + First floor + separate roof)
+export const mockProject2: Project = {
+  id: 'mock-project-2',
+  name: 'Two Story Belgian House Renovation',
   generalAttributes: {
     propertySize: {
       width: 2000,
@@ -18,7 +126,7 @@ export const mockProject: Project = {
       storey: 0,
       height: 250,
       heightPosition: 0,
-      color: '#EFEF',
+      color: '#f8f9fa',
       windows: {
         '1': {
           width: 90,
@@ -100,7 +208,7 @@ export const mockProject: Project = {
       storey: 1,
       height: 250,
       heightPosition: 250,
-      color: '#efef',
+      color: '#e9ecef',
       windows: {
         '1': {
           width: 140,
@@ -167,21 +275,169 @@ export const mockProject: Project = {
         },
       },
     },
-    '2': {
-      storey: 2,
-      height: 250,
-      heightPosition: 500,
-      color: '#efef',
-    },
   },
   roof: {
     type: 'gable',
     width: 1150,
-    depth: 800,
-    height: 250,
+    depth: 1050,
+    height: 280,
     heightPosition: 500,
   },
 }
+
+// Scenario 3: Ground Floor + Attic House (Ground floor + attic floor that IS the roof)
+export const mockProject3: Project = {
+  id: 'mock-project-3',
+  name: 'Belgian House with Habitable Attic',
+  generalAttributes: {
+    propertySize: {
+      width: 1900,
+      depth: 1800,
+    },
+    floorSize: {
+      width: 1100,
+      depth: 900,
+    },
+  },
+  floors: {
+    '0': {
+      storey: 0,
+      height: 270,
+      heightPosition: 0,
+      color: '#f8f9fa',
+      windows: {
+        '1': {
+          width: 110,
+          height: 220,
+          position: {
+            orientation: 'front',
+            x: 180,
+            y: 15,
+          },
+        },
+        '2': {
+          width: 110,
+          height: 220,
+          position: {
+            orientation: 'front',
+            x: 350,
+            y: 15,
+          },
+        },
+        '3': {
+          width: 160,
+          height: 220,
+          position: {
+            orientation: 'back',
+            x: 300,
+            y: 15,
+          },
+        },
+        '4': {
+          width: 160,
+          height: 220,
+          position: {
+            orientation: 'back',
+            x: 650,
+            y: 15,
+          },
+        },
+      },
+      doors: {
+        '1': {
+          width: 240,
+          height: 220,
+          position: {
+            orientation: 'front',
+            x: 580,
+            y: 0,
+          },
+        },
+        '2': {
+          width: 200,
+          height: 220,
+          position: {
+            orientation: 'back',
+            x: 150,
+            y: 0,
+          },
+        },
+      },
+    },
+    '1': {
+      storey: 1,
+      height: 200,
+      heightPosition: 270,
+      color: '#fff3cd',
+      windows: {
+        '1': {
+          width: 80,
+          height: 120,
+          position: {
+            orientation: 'front',
+            x: 220,
+            y: 40,
+          },
+        },
+        '2': {
+          width: 80,
+          height: 120,
+          position: {
+            orientation: 'front',
+            x: 400,
+            y: 40,
+          },
+        },
+        '3': {
+          width: 80,
+          height: 120,
+          position: {
+            orientation: 'front',
+            x: 580,
+            y: 40,
+          },
+        },
+        '4': {
+          width: 100,
+          height: 100,
+          position: {
+            orientation: 'back',
+            x: 250,
+            y: 50,
+          },
+        },
+        '5': {
+          width: 100,
+          height: 100,
+          position: {
+            orientation: 'back',
+            x: 500,
+            y: 50,
+          },
+        },
+        '6': {
+          width: 100,
+          height: 100,
+          position: {
+            orientation: 'back',
+            x: 750,
+            y: 50,
+          },
+        },
+      },
+    },
+  },
+  roof: {
+    type: 'gable',
+    width: 1100, // Match floorSize.width exactly
+    depth: 900,  // Match floorSize.depth exactly  
+    height: 300,
+    heightPosition: 470,
+  },
+}
+
+// Keep the original mockProject for backward compatibility
+export const mockProject: Project = mockProject2
 
 // Additional mock projects for testing different scenarios
 export const mockProjectSmall: Project = {

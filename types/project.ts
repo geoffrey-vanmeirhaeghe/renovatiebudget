@@ -14,6 +14,10 @@ export interface Floor {
   storey: number
   height: number
   heightPosition: number
+  width?: number  // Individual floor width (optional, falls back to generalAttributes)
+  depth?: number  // Individual floor depth (optional, falls back to generalAttributes)
+  positionX?: number  // Horizontal X position (optional, defaults to 0)
+  positionZ?: number  // Horizontal Z position (optional, defaults to 0)
   color: string
   windows?: Record<string, WindowOrDoor>
   doors?: Record<string, WindowOrDoor>

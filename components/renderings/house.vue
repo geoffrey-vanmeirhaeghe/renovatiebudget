@@ -20,23 +20,22 @@
         <TresMeshToonMaterial color="#ffff99" />
         </Plane>
 
-        <!-- Floors -->
+        <!-- Floors - ALL floors render as floors -->
         <TresGroup
         v-for="(floor, index) in project.floors"
         :key="floor"
         :ref="floor"
         >
         <Box
-            v-if="index != Object.keys(project.floors).length - 1"
             :args="[
-            project.generalAttributes.floorSize.depth / 100,
+            getFloorDimension(floor, 'depth') / 100,
             floor.height / 100,
-            project.generalAttributes.floorSize.width / 100,
+            getFloorDimension(floor, 'width') / 100,
             ]"
             :position="[
-            0,
+            (floor.positionZ || 0) / 100,
             (floor.heightPosition + floor.height / 2) / 100,
-            0,
+            -(floor.positionX || 0) / 100,
             ]"
             @click="selectFloor(index, floor)"
         >
@@ -44,12 +43,6 @@
                 :color="isSelected('floor', index, null) ? '#ffaa44' : floor.color"
             />
         </Box>
-        <primitive 
-            v-else
-            :object="customThreeCreateRoof(project.roof)"
-            :position="getRoofPosition(project.roof, index)"
-        >
-        </primitive>
         <!-- Doors -->
         <Box
             v-for="(door, doorId) in floor.doors"
@@ -75,6 +68,15 @@
             />
         </Box>
         </TresGroup>
+
+        <!-- Roof - Always separate from floors -->
+        <primitive 
+            v-if="project.roof"
+            :object="customThreeCreateRoof(project.roof)"
+            :position="getRoofPosition(project.roof)"
+        >
+        </primitive>
+
         <TresAmbientLight :intensity="0.75" />
         <TresGridHelper :args="[2.5, 20]" />
     </TresCanvas>
@@ -161,11 +163,12 @@ const onControlsChange = () => {
 }
 
 // Watch for project changes and restore camera state after re-render
-watch(() => props.project, () => {
+// Only watch for changes that might affect scene structure, not property edits
+watch(() => props.project?.id, () => {
   nextTick(() => {
     restoreCameraState()
   })
-}, { deep: true })
+})
 
 // Function to restore camera state after scene updates
 const restoreCameraState = () => {
@@ -190,20 +193,35 @@ const restoreCameraState = () => {
   }
 }
 
+const getFloorDimension = (floor: any, dimension: 'width' | 'depth') => {
+  // Use floor-specific dimension if available, otherwise fall back to general attributes
+  return floor[dimension] || props.project.generalAttributes.floorSize[dimension]
+}
+
 const calculateObjectPosition = (object: any, floor: any) => {
-  const floorWidth = props.project.generalAttributes.floorSize.width
-  const floorDepth = props.project.generalAttributes.floorSize.depth
+  const floorWidth = getFloorDimension(floor, 'width')
+  const floorDepth = getFloorDimension(floor, 'depth')
   const floorHeight = floor.height
   const storey = floor.storey
 
-  return calcOffsetPosition(object, floorWidth, floorDepth, floorHeight, storey)
+  const basePosition = calcOffsetPosition(object, floorWidth, floorDepth, floorHeight, storey)
+  
+  // Add floor offset to object position
+  const floorOffsetX = (floor.positionX || 0) / 100
+  const floorOffsetZ = (floor.positionZ || 0) / 100
+  
+  return [
+    basePosition[0] + floorOffsetZ,  // Z component  
+    basePosition[1],                  // Y component (height)
+    basePosition[2] - floorOffsetX   // X component (inverted to match floor positioning)
+  ]
 }
 
 const calculateObjectSize = (object: any) => {
   return calcOffsetSize(object)
 }
 
-const getRoofPosition = (roof: any, index: number) => {
+const getRoofPosition = (roof: any) => {
   const floorWidth = props.project.generalAttributes.floorSize.width
   return calculateRoofPosition(roof, floorWidth)
 }

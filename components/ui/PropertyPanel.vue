@@ -1,5 +1,59 @@
 <template>
   <ClientOnly>
+    <!-- Data Source Toggle (only visible when nothing is selected) -->
+    <div v-if="!selectedObject" class="data-source-panel">
+      <div class="panel-header">
+        <h3>🔧 Dev Tools</h3>
+      </div>
+      <div class="property-section">
+        <h4>Data Source</h4>
+        <div class="data-source-controls">
+          <button 
+            @click="loadStrapiData" 
+            :class="{ active: dataSource === 'strapi' }"
+            class="data-source-btn"
+          >
+            🌐 Strapi Data
+          </button>
+        </div>
+        <div class="data-source-info">
+          <small>Current: <strong>{{ dataSource === 'strapi' ? 'Strapi' : `Mock ${mockScenario}` }}</strong></small>
+        </div>
+      </div>
+      
+      <div class="property-section">
+        <h4>Mock Scenarios</h4>
+        <div class="scenario-controls">
+          <button 
+            @click="loadMockScenario(1)" 
+            :class="{ active: dataSource === 'mock' && mockScenario === 1 }"
+            class="scenario-btn"
+          >
+            🏠 Single Floor
+          </button>
+          <button 
+            @click="loadMockScenario(2)" 
+            :class="{ active: dataSource === 'mock' && mockScenario === 2 }"
+            class="scenario-btn"
+          >
+            🏢 Two Floors
+          </button>
+          <button 
+            @click="loadMockScenario(3)" 
+            :class="{ active: dataSource === 'mock' && mockScenario === 3 }"
+            class="scenario-btn"
+          >
+            🏘️ Attic House
+          </button>
+        </div>
+        <div class="scenario-info">
+          <small v-if="dataSource === 'mock'">
+            <strong>{{ getScenarioDescription() }}</strong>
+          </small>
+        </div>
+      </div>
+    </div>
+
     <div v-if="selectedObject" class="property-panel">
     <div class="panel-header">
       <h3>{{ getObjectTitle() }}</h3>
@@ -138,6 +192,7 @@
         >
         <span class="unit">cm</span>
       </div>
+
       
       <div class="property-group">
         <label>Color:</label>
@@ -154,6 +209,106 @@
         </div>
       </div>
     </div>
+
+    <!-- Floor Position -->
+    <div v-if="selectedObject.type === 'floor'" class="property-section">
+      <h4>Floor Position</h4>
+      <div class="property-group">
+        <label>X Position:</label>
+        <input 
+          type="range" 
+          :min="-1000" 
+          :max="1000" 
+          :step="5"
+          :value="getFloorPosition('positionX')"
+          @input="updateFloorPosition('positionX', $event.target.value)"
+          class="slider"
+        >
+        <input 
+          type="number"
+          :min="-1000"
+          :max="1000"
+          :step="5"
+          :value="getFloorPosition('positionX')"
+          @input="updateFloorPosition('positionX', $event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">cm</span>
+      </div>
+      
+      <div class="property-group">
+        <label>Z Position:</label>
+        <input 
+          type="range" 
+          :min="-1000" 
+          :max="1000" 
+          :step="5"
+          :value="getFloorPosition('positionZ')"
+          @input="updateFloorPosition('positionZ', $event.target.value)"
+          class="slider"
+        >
+        <input 
+          type="number"
+          :min="-1000"
+          :max="1000"
+          :step="5"
+          :value="getFloorPosition('positionZ')"
+          @input="updateFloorPosition('positionZ', $event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">cm</span>
+      </div>
+    </div>
+
+    <!-- Floor Dimensions -->
+    <div v-if="selectedObject.type === 'floor'" class="property-section">
+      <h4>Floor Dimensions</h4>
+      <div class="property-group">
+        <label>Width:</label>
+        <input 
+          type="range" 
+          :min="500" 
+          :max="3000" 
+          :step="10"
+          :value="getFloorDimension('width')"
+          @input="updateFloorDimension('width', $event.target.value)"
+          class="slider"
+        >
+        <input 
+          type="number"
+          :min="500"
+          :max="3000"
+          :step="10"
+          :value="getFloorDimension('width')"
+          @input="updateFloorDimension('width', $event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">cm</span>
+      </div>
+      
+      <div class="property-group">
+        <label>Depth:</label>
+        <input 
+          type="range" 
+          :min="500" 
+          :max="3000" 
+          :step="10"
+          :value="getFloorDimension('depth')"
+          @input="updateFloorDimension('depth', $event.target.value)"
+          class="slider"
+        >
+        <input 
+          type="number"
+          :min="500"
+          :max="3000"
+          :step="10"
+          :value="getFloorDimension('depth')"
+          @input="updateFloorDimension('depth', $event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">cm</span>
+      </div>
+    </div>
     </div>
   </ClientOnly>
 </template>
@@ -163,7 +318,33 @@ import type { SelectedObject } from '~/composables/useSelection'
 import { DIMENSION_RANGES, SIZE_PRESETS } from '~/constants/building-standards'
 
 const { selectedObject, clearSelection } = useSelection()
-const { updateProject, currentProject } = useProject()
+const { updateProject, currentProject, loadProject } = useProject()
+
+// Data source management
+const dataSource = ref<'mock' | 'strapi'>('strapi') // Default to Strapi
+const mockScenario = ref<1 | 2 | 3>(2) // Default to scenario 2
+
+const loadMockScenario = async (scenario: 1 | 2 | 3) => {
+  dataSource.value = 'mock'
+  mockScenario.value = scenario
+  await loadProject(undefined, false, scenario) // Load specific mock scenario
+}
+
+const loadStrapiData = async () => {
+  dataSource.value = 'strapi'
+  // TODO: Replace hard-coded documentId with dynamic selection
+  // See TECHNICAL_DEBT.md for details
+  await loadProject('ca66f5looy2mij5rua9yj987', true)
+}
+
+const getScenarioDescription = () => {
+  switch (mockScenario.value) {
+    case 1: return 'Ground floor + separate roof'
+    case 2: return 'Ground + first floor + separate roof'
+    case 3: return 'Ground floor + attic (roof integrated)'
+    default: return ''
+  }
+}
 
 // Set up project synchronization
 useProjectSync()
@@ -279,6 +460,49 @@ const updateFloorColor = (color: string) => {
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   updatedProject.floors[selectedObject.value.id].color = color
+  
+  updateProject(updatedProject)
+}
+
+
+const getFloorDimension = (dimension: 'width' | 'depth') => {
+  if (!currentProject.value || !selectedObject.value) return 1000
+  
+  const floor = currentProject.value.floors[selectedObject.value.id]
+  // Use floor-specific dimension if available, otherwise fall back to general attributes
+  return floor[dimension] || currentProject.value.generalAttributes.floorSize[dimension]
+}
+
+const updateFloorDimension = (dimension: 'width' | 'depth', value: string) => {
+  if (!currentProject.value || !selectedObject.value) return
+  
+  const numValue = parseInt(value)
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Set the dimension on the specific floor, making it independent
+  updatedProject.floors[selectedObject.value.id][dimension] = numValue
+  
+  updateProject(updatedProject)
+}
+
+const getFloorPosition = (position: 'positionX' | 'positionZ') => {
+  if (!currentProject.value || !selectedObject.value) return 0
+  
+  const floor = currentProject.value.floors[selectedObject.value.id]
+  // Use floor-specific position if available, otherwise default to 0
+  return floor[position] || 0
+}
+
+const updateFloorPosition = (position: 'positionX' | 'positionZ', value: string) => {
+  if (!currentProject.value || !selectedObject.value) return
+  
+  const numValue = parseInt(value)
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Set the position on the specific floor
+  updatedProject.floors[selectedObject.value.id][position] = numValue
   
   updateProject(updatedProject)
 }
@@ -520,5 +744,88 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
 .color-btn.active {
   border-color: #3b82f6;
   border-width: 3px;
+}
+
+/* Data Source Panel */
+.data-source-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 250px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+}
+
+.data-source-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.data-source-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.data-source-btn:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+}
+
+.data-source-btn.active {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+}
+
+.data-source-info {
+  text-align: center;
+  color: #666;
+}
+
+/* Scenario Selection */
+.scenario-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.scenario-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.scenario-btn:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+}
+
+.scenario-btn.active {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+}
+
+.scenario-info {
+  text-align: center;
+  color: #666;
+  margin-top: 8px;
 }
 </style>
