@@ -18,14 +18,18 @@ if (process.client) {
   hoveredObject.value = null
   console.log('Selection state cleared on client start')
   
-  // Debug: Watch for any changes to selectedObject
-  watch(selectedObject, (newSelection, oldSelection) => {
-    console.log('selectedObject changed:', {
-      from: oldSelection,
-      to: newSelection,
-      stack: new Error().stack
-    })
-  }, { immediate: true })
+  // Debug: Watch for any changes to selectedObject (only initialize once)
+  let watcherInitialized = false
+  if (!watcherInitialized) {
+    watcherInitialized = true
+    watch(selectedObject, (newSelection, oldSelection) => {
+      console.log('selectedObject changed:', {
+        from: oldSelection,
+        to: newSelection,
+        timestamp: new Date().toISOString()
+      })
+    }, { immediate: true })
+  }
 }
 
 export const useSelection = () => {

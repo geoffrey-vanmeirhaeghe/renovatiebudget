@@ -48,7 +48,7 @@
             @click="selectFloor(index, floor)"
         >
             <TresMeshToonMaterial 
-                :color="isSelected('floor', index, null) ? '#ffaa44' : floor.color"
+                :color="getFloorColor(index, floor).value"
             />
         </Box>
         <!-- Doors -->
@@ -60,7 +60,7 @@
             @click="selectDoor(doorId, door, index)"
         >
             <TresMeshToonMaterial 
-                :color="isSelected('door', doorId, index) ? '#ff6b35' : '#5c6063'"
+                :color="getDoorColor(doorId, index).value"
             />
         </Box>
         <!-- Windows -->
@@ -72,7 +72,7 @@
             @click="selectWindow(windowId, window, index)"
         >
             <TresMeshToonMaterial 
-                :color="isSelected('window', windowId, index) ? '#ff6b35' : '#bdd7ff'"
+                :color="getWindowColor(windowId, index).value"
             />
         </Box>
         </TresGroup>
@@ -235,7 +235,7 @@ const getRoofPosition = (roof: any) => {
   return calculateRoofPosition(roof, floorWidth)
 }
 
-const selectWindow = (windowId: string, window: any, floorIndex: string) => {
+const selectWindow = (windowId: string, window: any, floorIndex: string | number) => {
   if (isInitializing.value) {
     console.log('BLOCKED window selection during initialization:', windowId)
     return
@@ -244,11 +244,11 @@ const selectWindow = (windowId: string, window: any, floorIndex: string) => {
     id: windowId,
     type: 'window',
     object: window,
-    floorId: floorIndex
+    floorId: String(floorIndex) // Ensure floorId is always a string
   })
 }
 
-const selectDoor = (doorId: string, door: any, floorIndex: string) => {
+const selectDoor = (doorId: string, door: any, floorIndex: string | number) => {
   if (isInitializing.value) {
     console.log('BLOCKED door selection during initialization:', doorId)
     return
@@ -257,50 +257,86 @@ const selectDoor = (doorId: string, door: any, floorIndex: string) => {
     id: doorId,
     type: 'door',
     object: door,
-    floorId: floorIndex
+    floorId: String(floorIndex) // Ensure floorId is always a string
   })
 }
 
-const selectFloor = (floorId: string, floor: any) => {
+const selectFloor = (floorId: string | number, floor: any) => {
   if (isInitializing.value) {
     console.log('BLOCKED floor selection during initialization:', floorId)
     return
   }
   selectObject({
-    id: floorId,
+    id: String(floorId), // Ensure id is always a string
     type: 'floor',
     object: floor
   })
 }
 
-const isSelected = (type: string, id: string, floorId: string | null) => {
-  if (!selectedObject.value) return false
-  return selectedObject.value.type === type && 
-         selectedObject.value.id === id && 
-         (floorId ? selectedObject.value.floorId === floorId : true)
+// Compute colors for each element type - this ensures full reactivity
+const getFloorColor = (floorIndex: string | number, floor: any) => {
+  return computed(() => {
+    const current = selectedObject.value
+    if (!current || current.type !== 'floor') {
+      return floor.color
+    }
+    const normalizedCurrentId = String(current.id)
+    const normalizedFloorId = String(floorIndex)
+    return normalizedCurrentId === normalizedFloorId ? '#ffaa44' : floor.color
+  })
 }
 
-const hoverWindow = (windowId: string, window: any, floorIndex: string) => {
+const getWindowColor = (windowId: string, floorIndex: string | number) => {
+  return computed(() => {
+    const current = selectedObject.value
+    if (!current || current.type !== 'window') {
+      return '#bdd7ff'
+    }
+    const normalizedCurrentId = String(current.id)
+    const normalizedCurrentFloorId = String(current.floorId)
+    const normalizedWindowId = String(windowId)
+    const normalizedFloorId = String(floorIndex)
+    
+    return normalizedCurrentId === normalizedWindowId && normalizedCurrentFloorId === normalizedFloorId ? '#ff6b35' : '#bdd7ff'
+  })
+}
+
+const getDoorColor = (doorId: string, floorIndex: string | number) => {
+  return computed(() => {
+    const current = selectedObject.value
+    if (!current || current.type !== 'door') {
+      return '#5c6063'
+    }
+    const normalizedCurrentId = String(current.id)
+    const normalizedCurrentFloorId = String(current.floorId)
+    const normalizedDoorId = String(doorId)
+    const normalizedFloorId = String(floorIndex)
+    
+    return normalizedCurrentId === normalizedDoorId && normalizedCurrentFloorId === normalizedFloorId ? '#ff6b35' : '#5c6063'
+  })
+}
+
+const hoverWindow = (windowId: string, window: any, floorIndex: string | number) => {
   hoverObject({
     id: windowId,
     type: 'window',
     object: window,
-    floorId: floorIndex
+    floorId: String(floorIndex) // Ensure floorId is always a string
   })
 }
 
-const hoverDoor = (doorId: string, door: any, floorIndex: string) => {
+const hoverDoor = (doorId: string, door: any, floorIndex: string | number) => {
   hoverObject({
     id: doorId,
     type: 'door',
     object: door,
-    floorId: floorIndex
+    floorId: String(floorIndex) // Ensure floorId is always a string
   })
 }
 
-const hoverFloor = (floorId: string, floor: any) => {
+const hoverFloor = (floorId: string | number, floor: any) => {
   hoverObject({
-    id: floorId,
+    id: String(floorId), // Ensure id is always a string
     type: 'floor',
     object: floor
   })

@@ -133,7 +133,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'front',
-            x: 120,
+            x: 70,
             y: 0,
           },
         },
@@ -142,7 +142,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'front',
-            x: 260,
+            x: 210,
             y: 0,
           },
         },
@@ -151,7 +151,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'front',
-            x: 400,
+            x: 350,
             y: 0,
           },
         },
@@ -160,7 +160,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'back',
-            x: 575,
+            x: 525,
             y: 0,
           },
         },
@@ -171,7 +171,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'front',
-            x: 620,
+            x: 570,
             y: 0,
           },
         },
@@ -180,7 +180,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'front',
-            x: 970,
+            x: 820,
             y: 0,
           },
         },
@@ -189,7 +189,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'back',
-            x: 970,
+            x: 880,
             y: 0,
           },
         },
@@ -198,7 +198,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'back',
-            x: 190,
+            x: 140,
             y: 0,
           },
         },
@@ -215,7 +215,7 @@ export const mockProject2: Project = {
           height: 120,
           position: {
             orientation: 'front',
-            x: 140,
+            x: 90,
             y: 80,
           },
         },
@@ -224,7 +224,7 @@ export const mockProject2: Project = {
           height: 120,
           position: {
             orientation: 'front',
-            x: 380,
+            x: 330,
             y: 80,
           },
         },
@@ -233,7 +233,7 @@ export const mockProject2: Project = {
           height: 120,
           position: {
             orientation: 'front',
-            x: 620,
+            x: 570,
             y: 80,
           },
         },
@@ -242,7 +242,7 @@ export const mockProject2: Project = {
           height: 130,
           position: {
             orientation: 'back',
-            x: 190,
+            x: 140,
             y: 80,
           },
         },
@@ -251,7 +251,7 @@ export const mockProject2: Project = {
           height: 130,
           position: {
             orientation: 'back',
-            x: 575,
+            x: 525,
             y: 80,
           },
         },
@@ -260,7 +260,7 @@ export const mockProject2: Project = {
           height: 130,
           position: {
             orientation: 'back',
-            x: 950,
+            x: 800,
             y: 80,
           },
         },
@@ -269,7 +269,7 @@ export const mockProject2: Project = {
           height: 210,
           position: {
             orientation: 'front',
-            x: 970,
+            x: 940,
             y: 0,
           },
         },

@@ -15,7 +15,7 @@ export const useElementCreation = () => {
   const targetFloorId = ref<string>('')
 
   const { updateProject, currentProject } = useProject()
-  const { setSelection } = useSelection()
+  const { selectObject } = useSelection()
   const { getSizePresets } = useBuildingStandards()
 
   /**
@@ -131,7 +131,7 @@ export const useElementCreation = () => {
       
       // Update project and select the new element
       updateProject(updatedProject)
-      setSelection({ type: 'window', id: elementId, floorId: targetFloorId.value })
+      selectObject({ type: 'window', id: elementId, object: newElement, floorId: targetFloorId.value })
       
       return elementId
     } else if (creationType.value === 'door') {
@@ -141,7 +141,7 @@ export const useElementCreation = () => {
       
       // Update project and select the new element
       updateProject(updatedProject)
-      setSelection({ type: 'door', id: elementId, floorId: targetFloorId.value })
+      selectObject({ type: 'door', id: elementId, object: newElement, floorId: targetFloorId.value })
       
       return elementId
     }

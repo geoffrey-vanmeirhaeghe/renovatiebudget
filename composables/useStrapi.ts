@@ -47,7 +47,7 @@ const transformFloor = (strapiFloor: any): Floor => {
     storey: strapiFloor.Storey,
     height: strapiFloor.Dimensions?.height || 250,
     heightPosition: strapiFloor.HeightPosition || (strapiFloor.Storey * 250),
-    color: strapiFloor.Color || '#efef',
+    color: strapiFloor.Color || '#efefef',
     windows: transformWindowsOrDoors(defaultWindows),
     doors: transformWindowsOrDoors(defaultDoors)
   }
@@ -83,6 +83,61 @@ const transformRoof = (strapiRoof: any): Roof => {
     depth: dimensions.depth || 800,
     height: dimensions.height || 250,
     heightPosition: dimensions.heightPosition || 500
+  }
+}
+
+// Reverse transformation: Convert frontend Project to Strapi format
+const transformProjectToStrapi = (project: Project): any => {
+  // For now, only update the simple fields that don't involve complex relations
+  // TODO: Handle building/floor relations properly in future iteration
+  
+  return {
+    ProjectName: project.name,
+    GeneralAttributes: project.generalAttributes
+    // NOTE: Building relations are complex - leaving them out for now
+    // This means we can only update project name and general attributes
+  }
+}
+
+// Reverse transformation: Convert frontend Floor to Strapi format
+const transformFloorToStrapi = (floor: Floor): any => {
+  return {
+    Storey: floor.storey,
+    Dimensions: {
+      height: floor.height
+    },
+    HeightPosition: floor.heightPosition,
+    Color: floor.color,
+    Windows: transformWindowsOrDoorsToStrapi(floor.windows || {}),
+    Doors: transformWindowsOrDoorsToStrapi(floor.doors || {})
+  }
+}
+
+// Reverse transformation: Convert frontend windows/doors to Strapi format
+const transformWindowsOrDoorsToStrapi = (items: Record<string, WindowOrDoor>): any[] => {
+  return Object.values(items).map(item => ({
+    Dimensions: {
+      width: item.width,
+      height: item.height,
+      position: {
+        orientation: item.position.orientation,
+        x: item.position.x,
+        y: item.position.y
+      }
+    }
+  }))
+}
+
+// Reverse transformation: Convert frontend Roof to Strapi format
+const transformRoofToStrapi = (roof: Roof): any => {
+  return {
+    Type: roof.type,
+    Dimensions: {
+      width: roof.width,
+      depth: roof.depth,
+      height: roof.height,
+      heightPosition: roof.heightPosition
+    }
   }
 }
 
@@ -155,8 +210,67 @@ export const useStrapi = () => {
   }
 
   const saveProject = async (project: Project): Promise<Project> => {
-    // TODO: Implement reverse transformation and PUT/POST to Strapi
-    throw new Error('Save project not yet implemented')
+    try {
+      const strapiData = transformProjectToStrapi(project)
+      
+      // Determine if this is a new project or update
+      const isNewProject = !project.id || project.id.startsWith('mock-')
+      
+      if (isNewProject) {
+        // Create new project - Strapi v5 requires data wrapper
+        const response = await client<{data: any}>('/api/projects', {
+          method: 'POST',
+          body: { data: strapiData }
+        })
+        return transformProject(response.data)
+      } else {
+        // Update existing project - Strapi v5 requires data wrapper
+        const response = await client<{data: any}>(`/api/projects/${project.id}`, {
+          method: 'PUT',
+          body: { data: strapiData }
+        })
+        return transformProject(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to save project to Strapi:', error)
+      throw new Error('Failed to save project')
+    }
+  }
+
+  const updateProject = async (project: Project): Promise<Project> => {
+    try {
+      if (!project.id || project.id.startsWith('mock-')) {
+        throw new Error('Cannot update project: Invalid project ID')
+      }
+
+      const strapiData = transformProjectToStrapi(project)
+      
+      const response = await client<{data: any}>(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        body: { data: strapiData }
+      })
+      
+      return transformProject(response.data)
+    } catch (error) {
+      console.error('Failed to update project in Strapi:', error)
+      throw new Error('Failed to update project')
+    }
+  }
+
+  const createProject = async (project: Omit<Project, 'id'>): Promise<Project> => {
+    try {
+      const strapiData = transformProjectToStrapi(project as Project)
+      
+      const response = await client<{data: any}>('/api/projects', {
+        method: 'POST',
+        body: { data: strapiData }
+      })
+      
+      return transformProject(response.data)
+    } catch (error) {
+      console.error('Failed to create project in Strapi:', error)
+      throw new Error('Failed to create project')
+    }
   }
 
   return {
@@ -164,6 +278,9 @@ export const useStrapi = () => {
     loadProject,
     loadUserProjects,
     saveProject,
-    transformProject // Export for testing
+    updateProject,
+    createProject,
+    transformProject, // Export for testing
+    transformProjectToStrapi // Export for testing
   }
 }

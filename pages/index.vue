@@ -11,12 +11,10 @@ import PropertyPanel from '~/components/ui/PropertyPanel.vue'
 
 const { currentProject, loadProject } = useProject()
 
-// Load Strapi data by default
-// TODO: Replace hard-coded documentId with dynamic project selection
-// See TECHNICAL_DEBT.md for details
+// Load Strapi data by default - with fix applied
 onMounted(async () => {
   try {
-    // Load project from Strapi using known documentId
+    console.log('Loading Strapi data with selection fix...')
     await loadProject('ca66f5looy2mij5rua9yj987', true)
   } catch (error) {
     console.error('Failed to load Strapi data, falling back to mock data:', error)

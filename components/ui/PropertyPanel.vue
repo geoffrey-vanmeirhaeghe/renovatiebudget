@@ -20,6 +20,44 @@
           <small>Current: <strong>{{ dataSource === 'strapi' ? 'Strapi' : `Mock ${mockScenario}` }}</strong></small>
         </div>
       </div>
+
+      <div class="property-section">
+        <h4>Project Details</h4>
+        <div class="property-group">
+          <label>Title:</label>
+          <input 
+            v-model="projectTitle"
+            @input="updateProjectTitle"
+            type="text"
+            class="title-input"
+            placeholder="Enter project name"
+          >
+        </div>
+      </div>
+
+      <div class="property-section">
+        <h4>Project Actions</h4>
+        <div class="action-controls">
+          <button 
+            @click="saveCurrentProject" 
+            :disabled="!canSave || isSaving"
+            class="action-btn save-btn"
+          >
+            {{ isSaving ? '⏳ Saving...' : '💾 Save Project' }}
+          </button>
+          <button 
+            @click="createNewProject" 
+            class="action-btn create-btn"
+          >
+            ✨ New Project
+          </button>
+        </div>
+        <div class="action-info" v-if="saveStatus">
+          <small :class="{ error: saveStatus.includes('Error'), success: saveStatus.includes('Saved') }">
+            {{ saveStatus }}
+          </small>
+        </div>
+      </div>
       
       <div class="property-section">
         <h4>Mock Scenarios</h4>
@@ -366,6 +404,7 @@ const { selectedObject, clearSelection } = useSelection()
 const { updateProject, currentProject, loadProject } = useProject()
 const { getDisplayUnit, formatValue, convertToDisplay, convertFromDisplay } = useBuildingStandards()
 const { quickCreateElement, startCreating } = useElementCreation()
+const { saveProject, createProject, updateProject: updateStrapiProject } = useStrapi()
 
 // Computed properties for current object values (always fresh from project data)
 const currentObject = computed(() => {
@@ -401,6 +440,104 @@ const loadStrapiData = async () => {
   // TODO: Replace hard-coded documentId with dynamic selection
   // See TECHNICAL_DEBT.md for details
   await loadProject('ca66f5looy2mij5rua9yj987', true)
+}
+
+// Save/Create functionality
+const isSaving = ref(false)
+const saveStatus = ref('')
+
+// Project title editing
+const projectTitle = ref('')
+
+// Watch for project changes to update the title input
+watch(() => currentProject.value?.name, (newName) => {
+  if (newName && newName !== projectTitle.value) {
+    projectTitle.value = newName
+  }
+}, { immediate: true })
+
+const canSave = computed(() => {
+  return currentProject.value && !currentProject.value.id.startsWith('mock-')
+})
+
+const saveCurrentProject = async () => {
+  if (!currentProject.value || isSaving.value) return
+
+  isSaving.value = true
+  saveStatus.value = ''
+  
+  try {
+    const savedProject = await saveProject(currentProject.value)
+    
+    // Update the current project with the saved data (including any server-generated fields)
+    await loadProject(savedProject.id, true)
+    
+    saveStatus.value = '✅ Project metadata saved! (3D changes need more work)'
+    setTimeout(() => { saveStatus.value = '' }, 5000)
+  } catch (error) {
+    console.error('Save failed:', error)
+    saveStatus.value = `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    setTimeout(() => { saveStatus.value = '' }, 5000)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const createNewProject = async () => {
+  const defaultProject = {
+    name: `New Project ${new Date().toLocaleDateString()}`,
+    generalAttributes: {
+      propertySize: { width: 2000, depth: 2000 },
+      floorSize: { width: 1150, depth: 1050 }
+    },
+    floors: {
+      '0': {
+        storey: 0,
+        height: 250,
+        heightPosition: 0,
+        color: '#f8f9fa',
+        windows: {},
+        doors: {}
+      }
+    },
+    roof: {
+      type: 'gable' as const,
+      width: 1150,
+      depth: 1050,
+      height: 280,
+      heightPosition: 250
+    }
+  }
+
+  isSaving.value = true
+  saveStatus.value = ''
+  
+  try {
+    const newProject = await createProject(defaultProject)
+    
+    // Load the new project
+    await loadProject(newProject.id, true)
+    dataSource.value = 'strapi'
+    
+    saveStatus.value = '✅ New project created!'
+    setTimeout(() => { saveStatus.value = '' }, 3000)
+  } catch (error) {
+    console.error('Create failed:', error)
+    saveStatus.value = `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    setTimeout(() => { saveStatus.value = '' }, 5000)
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const updateProjectTitle = () => {
+  if (!currentProject.value || !projectTitle.value.trim()) return
+  
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  updatedProject.name = projectTitle.value.trim()
+  
+  updateProject(updatedProject)
 }
 
 const getScenarioDescription = () => {
@@ -864,6 +1001,21 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
   border-color: #3b82f6;
 }
 
+.title-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.title-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
 .unit {
   min-width: 25px;
   font-size: 12px;
@@ -1064,5 +1216,64 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
   color: #666;
   font-size: 11px;
   line-height: 1.3;
+}
+
+/* Project Action Buttons */
+.action-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.save-btn:not(:disabled):hover {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: white;
+}
+
+.create-btn:hover {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.action-info {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.action-info small {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.action-info .success {
+  color: #22c55e;
+}
+
+.action-info .error {
+  color: #ef4444;
 }
 </style>
