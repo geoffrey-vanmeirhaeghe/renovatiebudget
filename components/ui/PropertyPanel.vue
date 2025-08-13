@@ -80,7 +80,7 @@
           :min="getDimensionRange('WIDTH').min" 
           :max="getDimensionRange('WIDTH').max" 
           :step="1"
-          :value="selectedObject.object.width"
+          :value="convertToDisplay(currentObject?.width || 0)"
           @input="updateWidth($event.target.value)"
           class="slider"
         >
@@ -88,11 +88,11 @@
           type="number"
           :min="getDimensionRange('WIDTH').min"
           :max="getDimensionRange('WIDTH').max"
-          :value="selectedObject.object.width"
+          :value="convertToDisplay(currentObject?.width || 0)"
           @input="updateWidth($event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
       
       <div class="property-group">
@@ -102,7 +102,7 @@
           :min="getDimensionRange('HEIGHT').min" 
           :max="getDimensionRange('HEIGHT').max" 
           :step="1"
-          :value="selectedObject.object.height"
+          :value="convertToDisplay(currentObject?.height || 0)"
           @input="updateHeight($event.target.value)"
           class="slider"
         >
@@ -110,11 +110,34 @@
           type="number"
           :min="getDimensionRange('HEIGHT').min"
           :max="getDimensionRange('HEIGHT').max"
-          :value="selectedObject.object.height"
+          :value="convertToDisplay(currentObject?.height || 0)"
           @input="updateHeight($event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
+      </div>
+    </div>
+
+    <!-- Wall Orientation Controls -->
+    <div v-if="isWindowOrDoor" class="property-section">
+      <h4>Wall Position</h4>
+      
+      <div class="property-group">
+        <label>Wall:</label>
+        <select 
+          :value="currentObject?.position?.orientation || 'front'"
+          @change="updateOrientation($event.target.value)"
+          class="orientation-select"
+        >
+          <option value="front">Front Wall</option>
+          <option value="back">Back Wall</option>
+          <option value="left">Left Wall</option>
+          <option value="right">Right Wall</option>
+        </select>
+      </div>
+      
+      <div class="orientation-info">
+        <small>{{ getOrientationDescription() }}</small>
       </div>
     </div>
 
@@ -129,7 +152,7 @@
           :min="0" 
           :max="getMaxXPosition()" 
           :step="1"
-          :value="selectedObject.object.position.x"
+          :value="convertToDisplay(currentObject?.position?.x || 0)"
           @input="updateXPosition($event.target.value)"
           class="slider"
         >
@@ -137,11 +160,11 @@
           type="number"
           :min="0"
           :max="getMaxXPosition()"
-          :value="selectedObject.object.position.x"
+          :value="convertToDisplay(currentObject?.position?.x || 0)"
           @input="updateXPosition($event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
       
       <div class="property-group">
@@ -151,7 +174,7 @@
           :min="0" 
           :max="getMaxYPosition()" 
           :step="1"
-          :value="selectedObject.object.position.y"
+          :value="convertToDisplay(currentObject?.position?.y || 0)"
           @input="updateYPosition($event.target.value)"
           class="slider"
         >
@@ -159,14 +182,36 @@
           type="number"
           :min="0"
           :max="getMaxYPosition()"
-          :value="selectedObject.object.position.y"
+          :value="convertToDisplay(currentObject?.position?.y || 0)"
           @input="updateYPosition($event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
     </div>
 
+
+    <!-- Element Creation (when floor is selected) -->
+    <div v-if="selectedObject.type === 'floor'" class="property-section">
+      <h4>Add Elements</h4>
+      <div class="add-buttons">
+        <button 
+          @click="quickAddWindow"
+          class="add-btn window-btn"
+        >
+          🪟 Add Window
+        </button>
+        <button 
+          @click="quickAddDoor"
+          class="add-btn door-btn"
+        >
+          🚪 Add Door
+        </button>
+      </div>
+      <div class="add-info">
+        <small>Elements will be placed on the front wall and can be repositioned</small>
+      </div>
+    </div>
 
     <!-- Floor Properties -->
     <div v-if="selectedObject.type === 'floor'" class="property-section">
@@ -175,22 +220,22 @@
         <label>Height:</label>
         <input 
           type="range" 
-          :min="DIMENSION_RANGES.FLOORS.HEIGHT.min" 
-          :max="DIMENSION_RANGES.FLOORS.HEIGHT.max" 
+          :min="Math.round(convertToDisplay(DIMENSION_RANGES.FLOORS.HEIGHT.min))" 
+          :max="Math.round(convertToDisplay(DIMENSION_RANGES.FLOORS.HEIGHT.max))" 
           :step="1"
-          :value="selectedObject.object.height"
+          :value="convertToDisplay(currentObject?.height || 0)"
           @input="updateFloorHeight($event.target.value)"
           class="slider"
         >
         <input 
           type="number"
-          :min="DIMENSION_RANGES.FLOORS.HEIGHT.min"
-          :max="DIMENSION_RANGES.FLOORS.HEIGHT.max"
-          :value="selectedObject.object.height"
+          :min="Math.round(convertToDisplay(DIMENSION_RANGES.FLOORS.HEIGHT.min))"
+          :max="Math.round(convertToDisplay(DIMENSION_RANGES.FLOORS.HEIGHT.max))"
+          :value="convertToDisplay(currentObject?.height || 0)"
           @input="updateFloorHeight($event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
 
       
@@ -201,7 +246,7 @@
             v-for="color in floorColors" 
             :key="color.value"
             :style="{ backgroundColor: color.value }"
-            :class="{ active: selectedObject.object.color === color.value }"
+            :class="{ active: currentObject?.color === color.value }"
             @click="updateFloorColor(color.value)"
             class="color-btn"
             :title="color.name"
@@ -217,46 +262,46 @@
         <label>X Position:</label>
         <input 
           type="range" 
-          :min="-1000" 
-          :max="1000" 
-          :step="5"
+          :min="Math.round(convertToDisplay(-1000))" 
+          :max="Math.round(convertToDisplay(1000))" 
+          :step="Math.round(convertToDisplay(5))"
           :value="getFloorPosition('positionX')"
           @input="updateFloorPosition('positionX', $event.target.value)"
           class="slider"
         >
         <input 
           type="number"
-          :min="-1000"
-          :max="1000"
-          :step="5"
+          :min="Math.round(convertToDisplay(-1000))"
+          :max="Math.round(convertToDisplay(1000))"
+          :step="Math.round(convertToDisplay(5))"
           :value="getFloorPosition('positionX')"
           @input="updateFloorPosition('positionX', $event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
       
       <div class="property-group">
         <label>Z Position:</label>
         <input 
           type="range" 
-          :min="-1000" 
-          :max="1000" 
-          :step="5"
+          :min="Math.round(convertToDisplay(-1000))" 
+          :max="Math.round(convertToDisplay(1000))" 
+          :step="Math.round(convertToDisplay(5))"
           :value="getFloorPosition('positionZ')"
           @input="updateFloorPosition('positionZ', $event.target.value)"
           class="slider"
         >
         <input 
           type="number"
-          :min="-1000"
-          :max="1000"
-          :step="5"
+          :min="Math.round(convertToDisplay(-1000))"
+          :max="Math.round(convertToDisplay(1000))"
+          :step="Math.round(convertToDisplay(5))"
           :value="getFloorPosition('positionZ')"
           @input="updateFloorPosition('positionZ', $event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
     </div>
 
@@ -267,46 +312,46 @@
         <label>Width:</label>
         <input 
           type="range" 
-          :min="500" 
-          :max="3000" 
-          :step="10"
+          :min="Math.round(convertToDisplay(500))" 
+          :max="Math.round(convertToDisplay(3000))" 
+          :step="Math.round(convertToDisplay(10))"
           :value="getFloorDimension('width')"
           @input="updateFloorDimension('width', $event.target.value)"
           class="slider"
         >
         <input 
           type="number"
-          :min="500"
-          :max="3000"
-          :step="10"
+          :min="Math.round(convertToDisplay(500))"
+          :max="Math.round(convertToDisplay(3000))"
+          :step="Math.round(convertToDisplay(10))"
           :value="getFloorDimension('width')"
           @input="updateFloorDimension('width', $event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
       
       <div class="property-group">
         <label>Depth:</label>
         <input 
           type="range" 
-          :min="500" 
-          :max="3000" 
-          :step="10"
+          :min="Math.round(convertToDisplay(500))" 
+          :max="Math.round(convertToDisplay(3000))" 
+          :step="Math.round(convertToDisplay(10))"
           :value="getFloorDimension('depth')"
           @input="updateFloorDimension('depth', $event.target.value)"
           class="slider"
         >
         <input 
           type="number"
-          :min="500"
-          :max="3000"
-          :step="10"
+          :min="Math.round(convertToDisplay(500))"
+          :max="Math.round(convertToDisplay(3000))"
+          :step="Math.round(convertToDisplay(10))"
           :value="getFloorDimension('depth')"
           @input="updateFloorDimension('depth', $event.target.value)"
           class="number-input"
         >
-        <span class="unit">cm</span>
+        <span class="unit">{{ getDisplayUnit() }}</span>
       </div>
     </div>
     </div>
@@ -319,6 +364,27 @@ import { DIMENSION_RANGES, SIZE_PRESETS } from '~/constants/building-standards'
 
 const { selectedObject, clearSelection } = useSelection()
 const { updateProject, currentProject, loadProject } = useProject()
+const { getDisplayUnit, formatValue, convertToDisplay, convertFromDisplay } = useBuildingStandards()
+const { quickCreateElement, startCreating } = useElementCreation()
+
+// Computed properties for current object values (always fresh from project data)
+const currentObject = computed(() => {
+  if (!selectedObject.value || !currentProject.value) return null
+  
+  const { type, id, floorId } = selectedObject.value
+  
+  if (type === 'floor') {
+    return currentProject.value.floors[id]
+  }
+  
+  if ((type === 'window' || type === 'door') && floorId) {
+    const floor = currentProject.value.floors[floorId]
+    const objects = type === 'window' ? floor?.windows : floor?.doors
+    return objects?.[id]
+  }
+  
+  return null
+})
 
 // Data source management
 const dataSource = ref<'mock' | 'strapi'>('strapi') // Default to Strapi
@@ -349,6 +415,22 @@ const getScenarioDescription = () => {
 // Set up project synchronization
 useProjectSync()
 
+// Element creation functions
+const quickAddWindow = () => {
+  if (!selectedObject.value || selectedObject.value.type !== 'floor') return
+  
+  startCreating('window', selectedObject.value.id)
+  quickCreateElement('front') // Default to front wall
+}
+
+const quickAddDoor = () => {
+  if (!selectedObject.value || selectedObject.value.type !== 'floor') return
+  
+  startCreating('door', selectedObject.value.id)
+  quickCreateElement('front') // Default to front wall
+}
+
+
 const isWindowOrDoor = computed(() => {
   if (!selectedObject.value) return false
   return selectedObject.value.type === 'window' || selectedObject.value.type === 'door'
@@ -372,30 +454,60 @@ const getObjectTitle = () => {
 }
 
 const getDimensionRange = (dimension: 'WIDTH' | 'HEIGHT') => {
-  if (!selectedObject.value) return { min: 20, max: 400 }
+  if (!selectedObject.value) return { 
+    min: Math.round(convertToDisplay(20)), 
+    max: Math.round(convertToDisplay(400)) 
+  }
   
   const type = selectedObject.value.type.toUpperCase() as 'WINDOWS' | 'DOORS'
   const range = DIMENSION_RANGES[type]?.[dimension]
   
   if (useExceptionalSizes.value) {
-    // Extended range for exceptional cases
+    // Extended range for exceptional cases - convert to display units
+    const currentValue = currentObject.value?.[dimension.toLowerCase()] || 0
     return {
-      min: Math.min(range?.min || 20, selectedObject.value.object[dimension.toLowerCase()] - 50),
-      max: Math.max(range?.max || 400, selectedObject.value.object[dimension.toLowerCase()] + 100)
+      min: Math.round(convertToDisplay(Math.min(range?.min || 20, currentValue - 50))),
+      max: Math.round(convertToDisplay(Math.max(range?.max || 400, currentValue + 100)))
     }
   }
   
-  return range || { min: 20, max: 400 }
+  // Convert range to display units
+  return {
+    min: Math.round(convertToDisplay(range?.min || 20)),
+    max: Math.round(convertToDisplay(range?.max || 400))
+  }
 }
 
 const getMaxXPosition = () => {
-  if (!currentProject.value) return 1000
-  return currentProject.value.generalAttributes.floorSize.width
+  if (!currentProject.value || !selectedObject.value?.floorId) return Math.round(convertToDisplay(1000))
+  
+  // Get the current object's width to prevent positioning outside bounds
+  const elementWidth = currentObject.value?.width || 0
+  const orientation = currentObject.value?.position?.orientation
+  
+  // Get floor dimensions (individual floor dimensions or fall back to general attributes)
+  const floor = currentProject.value.floors[selectedObject.value.floorId]
+  const floorWidth = floor?.width || currentProject.value.generalAttributes.floorSize.width
+  const floorDepth = floor?.depth || currentProject.value.generalAttributes.floorSize.depth
+  
+  let maxDimension = 0
+  if (orientation === 'front' || orientation === 'back') {
+    // For front/back walls, position along floor width
+    maxDimension = floorWidth
+  } else if (orientation === 'left' || orientation === 'right') {
+    // For left/right walls, position along floor depth
+    maxDimension = floorDepth
+  }
+  
+  // Max position should be dimension minus element width to keep element fully inside
+  // Using front-left origin: position 0 = left/front edge, so max = dimension - width
+  const maxPosition = Math.max(0, maxDimension - elementWidth)
+  return Math.round(convertToDisplay(maxPosition))
 }
 
 const getMaxYPosition = () => {
-  if (!currentProject.value) return 250
-  return currentProject.value.generalAttributes.floorSize.width / 5 // Reasonable height limit
+  if (!currentProject.value) return Math.round(convertToDisplay(250))
+  return Math.round(convertToDisplay(currentProject.value.generalAttributes.floorSize.width / 5)) // Reasonable height limit
 }
 
 const getStyleOptions = () => {
@@ -408,16 +520,17 @@ const getStyleOptions = () => {
 const updateWidth = (value: string) => {
   if (!selectedObject.value || !currentProject.value) return
   
-  const numValue = parseInt(value)
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue) // Convert from display unit to cm
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   
   if (selectedObject.value.floorId) {
     const floor = updatedProject.floors[selectedObject.value.floorId]
     if (selectedObject.value.type === 'window' && floor.windows) {
-      floor.windows[selectedObject.value.id].width = numValue
+      floor.windows[selectedObject.value.id].width = cmValue
     } else if (selectedObject.value.type === 'door' && floor.doors) {
-      floor.doors[selectedObject.value.id].width = numValue
+      floor.doors[selectedObject.value.id].width = cmValue
     }
   }
   
@@ -427,16 +540,17 @@ const updateWidth = (value: string) => {
 const updateHeight = (value: string) => {
   if (!selectedObject.value || !currentProject.value) return
   
-  const numValue = parseInt(value)
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   
   if (selectedObject.value.floorId) {
     const floor = updatedProject.floors[selectedObject.value.floorId]
     if (selectedObject.value.type === 'window' && floor.windows) {
-      floor.windows[selectedObject.value.id].height = numValue
+      floor.windows[selectedObject.value.id].height = cmValue
     } else if (selectedObject.value.type === 'door' && floor.doors) {
-      floor.doors[selectedObject.value.id].height = numValue
+      floor.doors[selectedObject.value.id].height = cmValue
     }
   }
   
@@ -446,10 +560,11 @@ const updateHeight = (value: string) => {
 const updateFloorHeight = (value: string) => {
   if (!selectedObject.value || !currentProject.value || selectedObject.value.type !== 'floor') return
   
-  const numValue = parseInt(value)
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
-  updatedProject.floors[selectedObject.value.id].height = numValue
+  updatedProject.floors[selectedObject.value.id].height = cmValue
   
   updateProject(updatedProject)
 }
@@ -466,22 +581,24 @@ const updateFloorColor = (color: string) => {
 
 
 const getFloorDimension = (dimension: 'width' | 'depth') => {
-  if (!currentProject.value || !selectedObject.value) return 1000
+  if (!currentProject.value || !selectedObject.value) return Math.round(convertToDisplay(1000))
   
   const floor = currentProject.value.floors[selectedObject.value.id]
   // Use floor-specific dimension if available, otherwise fall back to general attributes
-  return floor[dimension] || currentProject.value.generalAttributes.floorSize[dimension]
+  const cmValue = floor[dimension] || currentProject.value.generalAttributes.floorSize[dimension]
+  return Math.round(convertToDisplay(cmValue))
 }
 
 const updateFloorDimension = (dimension: 'width' | 'depth', value: string) => {
   if (!currentProject.value || !selectedObject.value) return
   
-  const numValue = parseInt(value)
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   
   // Set the dimension on the specific floor, making it independent
-  updatedProject.floors[selectedObject.value.id][dimension] = numValue
+  updatedProject.floors[selectedObject.value.id][dimension] = cmValue
   
   updateProject(updatedProject)
 }
@@ -491,18 +608,20 @@ const getFloorPosition = (position: 'positionX' | 'positionZ') => {
   
   const floor = currentProject.value.floors[selectedObject.value.id]
   // Use floor-specific position if available, otherwise default to 0
-  return floor[position] || 0
+  const cmValue = floor[position] || 0
+  return Math.round(convertToDisplay(cmValue))
 }
 
 const updateFloorPosition = (position: 'positionX' | 'positionZ', value: string) => {
   if (!currentProject.value || !selectedObject.value) return
   
-  const numValue = parseInt(value)
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   
   // Set the position on the specific floor
-  updatedProject.floors[selectedObject.value.id][position] = numValue
+  updatedProject.floors[selectedObject.value.id][position] = cmValue
   
   updateProject(updatedProject)
 }
@@ -510,16 +629,17 @@ const updateFloorPosition = (position: 'positionX' | 'positionZ', value: string)
 const updateXPosition = (value: string) => {
   if (!selectedObject.value || !currentProject.value) return
   
-  const numValue = parseInt(value)
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   
   if (selectedObject.value.floorId) {
     const floor = updatedProject.floors[selectedObject.value.floorId]
     if (selectedObject.value.type === 'window' && floor.windows) {
-      floor.windows[selectedObject.value.id].position.x = numValue
+      floor.windows[selectedObject.value.id].position.x = cmValue
     } else if (selectedObject.value.type === 'door' && floor.doors) {
-      floor.doors[selectedObject.value.id].position.x = numValue
+      floor.doors[selectedObject.value.id].position.x = cmValue
     }
   }
   
@@ -529,20 +649,80 @@ const updateXPosition = (value: string) => {
 const updateYPosition = (value: string) => {
   if (!selectedObject.value || !currentProject.value) return
   
-  const numValue = parseInt(value)
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   
   if (selectedObject.value.floorId) {
     const floor = updatedProject.floors[selectedObject.value.floorId]
     if (selectedObject.value.type === 'window' && floor.windows) {
-      floor.windows[selectedObject.value.id].position.y = numValue
+      floor.windows[selectedObject.value.id].position.y = cmValue
     } else if (selectedObject.value.type === 'door' && floor.doors) {
-      floor.doors[selectedObject.value.id].position.y = numValue
+      floor.doors[selectedObject.value.id].position.y = cmValue
     }
   }
   
   updateProject(updatedProject)
+}
+
+const updateOrientation = (newOrientation: string) => {
+  if (!selectedObject.value || !currentProject.value) return
+  
+  // Validate orientation value
+  if (!['front', 'back', 'left', 'right'].includes(newOrientation)) {
+    console.error('Invalid orientation:', newOrientation)
+    return
+  }
+  
+  const orientation = newOrientation as 'front' | 'back' | 'left' | 'right'
+  
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  if (selectedObject.value.floorId) {
+    const floor = updatedProject.floors[selectedObject.value.floorId]
+    const elementWidth = currentObject.value?.width || 0
+    
+    // Get floor dimensions (individual floor dimensions or fall back to general attributes)
+    const floorWidth = floor.width || currentProject.value.generalAttributes.floorSize.width
+    const floorDepth = floor.depth || currentProject.value.generalAttributes.floorSize.depth
+    
+    // Calculate new position limits based on the new orientation
+    let maxPosition = 0
+    if (orientation === 'front' || orientation === 'back') {
+      // For front/back walls, element moves along floor width
+      maxPosition = Math.max(0, floorWidth - elementWidth)
+    } else if (orientation === 'left' || orientation === 'right') {
+      // For left/right walls, element moves along floor depth
+      maxPosition = Math.max(0, floorDepth - elementWidth)
+    }
+    
+    // Reset position to a safe value within the new wall bounds
+    // Place at 25% of the available space to avoid edge cases
+    const safePosition = Math.max(0, maxPosition * 0.25)
+    
+    if (selectedObject.value.type === 'window' && floor.windows) {
+      floor.windows[selectedObject.value.id].position.orientation = orientation
+      floor.windows[selectedObject.value.id].position.x = safePosition
+    } else if (selectedObject.value.type === 'door' && floor.doors) {
+      floor.doors[selectedObject.value.id].position.orientation = orientation  
+      floor.doors[selectedObject.value.id].position.x = safePosition
+    }
+  }
+  
+  updateProject(updatedProject)
+}
+
+const getOrientationDescription = () => {
+  const orientation = currentObject.value?.position?.orientation
+  switch (orientation) {
+    case 'front': return 'Street-facing side of the building'
+    case 'back': return 'Garden or rear side of the building'  
+    case 'left': return 'Left side when facing the building'
+    case 'right': return 'Right side when facing the building'
+    default: return 'Select a wall orientation'
+  }
 }
 
 const applyPreset = (preset: { name: string, width: number, height: number }) => {
@@ -827,5 +1007,62 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
   text-align: center;
   color: #666;
   margin-top: 8px;
+}
+
+/* Element Creation Buttons */
+.add-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.add-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  text-align: center;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.add-btn:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+}
+
+.add-btn:active {
+  transform: translateY(0);
+}
+
+.window-btn:hover {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.door-btn:hover {
+  border-color: #8b5cf6;
+  background: #faf5ff;
+}
+
+.add-info {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.add-info small {
+  color: #666;
+  font-size: 11px;
+  line-height: 1.3;
 }
 </style>

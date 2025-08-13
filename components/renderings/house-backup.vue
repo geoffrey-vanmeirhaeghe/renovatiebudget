@@ -105,6 +105,7 @@ interface Props {
 const props = defineProps<Props>()
 const { selectedObject, hoveredObject, selectObject, clearSelection, hoverObject, clearHover } = useSelection()
 
+
 // Prevent auto-selection during component initialization
 const isInitializing = ref(true)
 onMounted(() => {
@@ -114,12 +115,12 @@ onMounted(() => {
     console.log('3D component initialization complete, selections now allowed')
   }, 1000)
 })
-
 const { cameraState, initializeCameraState, updateCameraPosition, updateCameraTarget, getCameraPosition, getCameraTarget } = useCameraState()
 
-// Refs for camera and controls
+// Refs for camera, controls, and canvas
 const cameraRef = ref<PerspectiveCamera>()
 const controlsRef = ref<OrbitControls>()
+const canvasRef = ref<any>()
 
 // Default camera positioning based on project size
 const defaultCameraPosition = computed(() => [
@@ -145,15 +146,39 @@ const cameraTarget = computed(() => {
   return defaultCameraTarget.value
 })
 
-// Initialize camera state on component mount
+// Initialize camera state and keyboard listeners on component mount
 onMounted(() => {
-  setTimeout(() => {
-    console.log('Initial camera setup - initializing state')
-    initializeCameraState()
-  }, 200)
+  nextTick(() => {
+    if (!cameraState.value.isInitialized) {
+      const defaultPos = new Vector3(...defaultCameraPosition.value)
+      const defaultTarget = new Vector3(...defaultCameraTarget.value)
+      initializeCameraState(defaultPos, defaultTarget, 1)
+    }
+
+    // Set up controls target after initialization
+    if (controlsRef.value && controlsRef.value.target && controlsRef.value.target.set) {
+      controlsRef.value.target.set(...cameraTarget.value)
+      controlsRef.value.update()
+    }
+  })
+
+  // Add keyboard listener for Escape key to clear selection
+  const handleKeyPress = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      console.log('Escape key pressed - clearing selection')
+      clearSelection('escape-key')
+    }
+  }
+  
+  document.addEventListener('keydown', handleKeyPress)
+  
+  // Clean up listener on unmount
+  onUnmounted(() => {
+    document.removeEventListener('keydown', handleKeyPress)
+  })
 })
 
-// Handle camera and controls changes to save state
+// Handle camera/controls changes
 const onControlsChange = () => {
   if (cameraRef.value && controlsRef.value && controlsRef.value.target) {
     // Update stored camera state when user interacts with controls
@@ -226,6 +251,98 @@ const getRoofPosition = (roof: any) => {
   return calculateRoofPosition(roof, floorWidth)
 }
 
+// Click tracking to prevent canvas clicks from triggering when clicking on objects
+// let isObjectClicked = false // COMMENTED OUT - duplicate declaration, using the one at line 125
+
+// Raycasting setup for detecting empty space clicks
+const raycaster = new Raycaster()
+const mouse = new Vector2()
+
+// Advanced raycasting solution for detecting empty space clicks
+const handleAdvancedCanvasClick = (event: MouseEvent) => {
+  console.log('handleAdvancedCanvasClick called')
+  
+  if (isObjectClicked) {
+    isObjectClicked = false
+    return
+  }
+
+  // Try to get the Three.js scene from TresJS
+  const scene = canvasRef.value?.context?.scene
+  const camera = cameraRef.value
+  
+  if (!scene || !camera) {
+    console.log('Scene or camera not available, falling back to simple deselection')
+    clearSelection('advanced-fallback')
+    return
+  }
+
+  // Get the canvas element
+  const canvas = canvasRef.value?.$el?.querySelector('canvas')
+  if (!canvas) {
+    console.log('Canvas element not found')
+    clearSelection('no-canvas')
+    return
+  }
+
+  // Calculate normalized mouse coordinates
+  const rect = canvas.getBoundingClientRect()
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+  // Set up raycaster
+  raycaster.setFromCamera(mouse, camera)
+  
+  // Get all mesh objects from the scene (excluding helper objects)
+  const meshes = scene.children.filter((child: any) => 
+    child.isMesh && 
+    child.material && 
+    !child.isHelper
+  )
+
+  // Check for intersections
+  const intersects = raycaster.intersectObjects(meshes, true)
+  
+  console.log('Raycast intersections found:', intersects.length)
+  
+  if (intersects.length === 0) {
+    // No intersections means click was in empty space
+    clearSelection('raycast-empty-space')
+  } else {
+    console.log('Intersections found, not clearing selection')
+  }
+}
+
+// Handle container-level clicks for deselection
+const handleContainerClick = (event: MouseEvent) => {
+  console.log('handleContainerClick called, target:', event.target)
+  
+  // If an object was explicitly clicked, don't process container click
+  if (isObjectClicked) {
+    console.log('Object was clicked, resetting flag and ignoring container click')
+    isObjectClicked = false
+    return
+  }
+
+  // Check if the click target is the canvas or container itself (not a child element)
+  const target = event.target as Element
+  const isCanvasClick = target.tagName === 'CANVAS' || target.classList.contains('canvas-container')
+  
+  // Also check if we clicked somewhere in the 3D scene that isn't a UI element
+  const isNotUIElement = !target.closest('.property-panel') && 
+                         !target.closest('button') && 
+                         !target.closest('.panel')
+  
+  console.log('Target tag:', target.tagName, 'isCanvasClick:', isCanvasClick, 'isNotUIElement:', isNotUIElement)
+  
+  if (isCanvasClick && isNotUIElement) {
+    console.log('Canvas/container clicked outside UI - clearing selection')
+    clearSelection('container-click')
+  } else {
+    console.log('Click target is UI element or not canvas/container, ignoring')
+  }
+}
+
 const selectWindow = (windowId: string, window: any, floorIndex: string) => {
   if (isInitializing.value) {
     console.log('BLOCKED window selection during initialization:', windowId)
@@ -238,6 +355,7 @@ const selectWindow = (windowId: string, window: any, floorIndex: string) => {
     floorId: floorIndex
   })
 }
+
 
 const selectDoor = (doorId: string, door: any, floorIndex: string) => {
   if (isInitializing.value) {
@@ -267,8 +385,15 @@ const selectFloor = (floorId: string, floor: any) => {
 const isSelected = (type: string, id: string, floorId: string | null) => {
   if (!selectedObject.value) return false
   return selectedObject.value.type === type && 
-         selectedObject.value.id === id && 
-         (floorId ? selectedObject.value.floorId === floorId : true)
+         selectedObject.value.id === id &&
+         selectedObject.value.floorId === floorId
+}
+
+const isHovered = (type: string, id: string, floorId: string | null) => {
+  if (!hoveredObject.value) return false
+  return hoveredObject.value.type === type && 
+         hoveredObject.value.id === id &&
+         hoveredObject.value.floorId === floorId
 }
 
 const hoverWindow = (windowId: string, window: any, floorIndex: string) => {
@@ -295,5 +420,4 @@ const hoverFloor = (floorId: string, floor: any) => {
     type: 'floor',
     object: floor
   })
-}
-</script>
+}</script>

@@ -45,9 +45,44 @@ This file tracks technical debt, TODOs, and build optimizations that need to be 
 - [ ] **Linting**: Set up pre-commit hooks with ESLint/Prettier
 - [ ] **Testing**: Add unit tests for critical business logic
 
+## 🌍 International Building Standards System
+
+### **✅ Implemented: Runtime Unit Conversion**
+- **Location**: `utils/unit-conversion.ts`, `constants/regional-standards.ts`, `composables/useBuildingStandards.ts`
+- **Features**: 
+  - All data stored internally in cm (Belgian standard)
+  - Runtime conversion to display units (cm, inches, etc.)
+  - Regional building standards (BE, NL, DE, FR, UK, US)
+  - Backwards compatibility - existing Belgian code unchanged
+
+### **🎯 Usage Examples**
+```typescript
+// Existing Belgian code continues to work unchanged
+import { DIMENSION_RANGES } from '~/constants/building-standards' // Still works!
+
+// New international features
+const { setRegion, formatValue, getDisplayUnit } = useBuildingStandards()
+setRegion('US') // Switch to US standards
+formatValue(120) // "47.2 in" (converted from 120cm)
+getDisplayUnit() // "in"
+
+// Region-aware templates
+const { getStandardFloorHeight } = useBuildingStandards()
+getStandardFloorHeight() // 244cm (US) vs 270cm (BE)
+```
+
+### **🔧 Region Selector**
+- **Location**: `components/ui/RegionSelector.vue`
+- **Integration**: Added to PropertyPanel dev tools
+- **Features**: Live region switching with immediate unit conversion
+
 ## 📋 Completed Items
 
-*(Items will be moved here when completed)*
+### **🌍 International Building Standards** 
+- **Runtime unit conversion system** - All data stays in cm, converts at display
+- **Regional building standards** - 6 regions supported (BE, NL, DE, FR, UK, US)
+- **Backwards compatibility** - Existing Belgian code unchanged
+- **Region selector UI** - Easy switching between regions
 
 ---
 *Last updated: 2025-08-12*

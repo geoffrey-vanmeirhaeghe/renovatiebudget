@@ -35,9 +35,14 @@ export const useSelection = () => {
     isEditing.value = false
   }
 
-  const clearSelection = () => {
-    selectedObject.value = null
-    isEditing.value = false
+  const clearSelection = (source = 'unknown') => {
+    if (selectedObject.value) {
+      console.log('clearSelection called from:', source, 'clearing:', selectedObject.value.type, selectedObject.value.id)
+      selectedObject.value = null
+      isEditing.value = false
+    } else {
+      console.log('clearSelection called from:', source, 'but no selection to clear')
+    }
   }
 
   const startEditing = () => {

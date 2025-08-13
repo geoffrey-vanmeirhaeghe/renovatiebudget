@@ -1,6 +1,23 @@
 import type { WindowOrDoor, Floor } from '~/types/project'
 
 /**
+ * COORDINATE SYSTEM EXPLANATION:
+ * 
+ * Logical Positioning (UI/Input):
+ * - Left-bottom origin system: (0,0) = left-bottom reference point for ALL walls
+ * - For front wall: position 0 = leftmost edge when looking at front of building
+ * - For back wall: position 0 = leftmost edge when looking at back of building (same left as front)
+ * - For left wall: position 0 = frontmost edge when looking along left wall
+ * - For right wall: position 0 = frontmost edge when looking along right wall
+ * - Y-axis: 0 = floor level, increases upward
+ * - Element positioning: Element's left/front edge is placed at the specified position
+ * 
+ * Three.js World Coordinates:
+ * - Center origin: (0,0,0) = center of floor
+ * - X-axis: negative = left side, positive = right side (when looking from front)
+ * - Y-axis: negative = down, positive = up  
+ * - Z-axis: negative = back, positive = front
+ * 
  * Calculate 3D position for windows/doors based on floor and orientation
  */
 export const calcOffsetPosition = (
@@ -15,6 +32,7 @@ export const calcOffsetPosition = (
   const floorDepthM = cmToThreeUnits(floorDepth)
   const floorHeightM = cmToThreeUnits(floorHeight)
   const shapeHeightM = cmToThreeUnits(shape.height)
+  const shapeWidthM = cmToThreeUnits(shape.width)
   const positionXM = cmToThreeUnits(shape.position.x)
   const positionYM = cmToThreeUnits(shape.position.y)
   
@@ -24,27 +42,33 @@ export const calcOffsetPosition = (
 
   switch (shape.position.orientation) {
     case 'front':
-      x = -(positionXM - (floorWidthM / 2))
-      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
+      // Front wall: positionX=0 means left edge of element aligns with left edge of floor
+      // In Three.js: negative X is towards left side of floor
+      x = -(floorWidthM / 2 - positionXM - shapeWidthM / 2)
+      y = positionYM + shapeHeightM / 2 + (floorHeightM * storey)
       z = floorDepthM / 2
       return [z, y, x]
 
     case 'back':
-      x = (positionXM - (floorWidthM / 2))
-      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
+      // Back wall: positionX=0 means left edge from user perspective (which is building right from front view)
+      // User measures from left when facing back wall, so position 0 = rightmost from front POV
+      x = -(floorWidthM / 2 - positionXM - shapeWidthM / 2)
+      y = positionYM + shapeHeightM / 2 + (floorHeightM * storey)
       z = -floorDepthM / 2
       return [z, y, x]
 
     case 'left':
-      x = (floorWidthM / 2)
-      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
-      z = (positionXM - (floorWidthM / 2))
+      // Left wall: position 0 = left reference point from user perspective (front of building)
+      x = floorWidthM / 2
+      y = positionYM + shapeHeightM / 2 + (floorHeightM * storey)
+      z = -(floorDepthM / 2 - positionXM - shapeWidthM / 2)
       return [z, y, x]
 
     case 'right':
-      x = -(floorWidthM / 2)
-      y = positionYM + (shapeHeightM / 2) + (floorHeightM * storey)
-      z = -(positionXM - (floorWidthM / 2))
+      // Right wall: should appear on right side of building (negative X due to coordinate flip)
+      x = -floorWidthM / 2
+      y = positionYM + shapeHeightM / 2 + (floorHeightM * storey)
+      z = floorDepthM / 2 - positionXM - shapeWidthM / 2
       return [z, y, x]
 
     default:
@@ -57,6 +81,41 @@ export const calcOffsetPosition = (
  */
 const cmToThreeUnits = (cm: number): number => {
   return cm / 100 // Convert cm to meters
+}
+
+/**
+ * Validate element positioning to ensure it stays within floor bounds
+ * @param element - The window or door element
+ * @param floorWidth - Width of the floor in cm
+ * @param floorDepth - Depth of the floor in cm
+ * @returns Object indicating if position is valid and what the corrected position should be
+ */
+export const validateElementPosition = (
+  element: WindowOrDoor, 
+  floorWidth: number, 
+  floorDepth: number
+): { isValid: boolean; correctedX: number; maxX: number } => {
+  const { orientation, x } = element.position
+  const elementWidth = element.width
+  
+  let maxPosition: number
+  
+  if (orientation === 'front' || orientation === 'back') {
+    // For front/back walls, element moves along floor width
+    maxPosition = floorWidth - elementWidth
+  } else {
+    // For left/right walls, element moves along floor depth  
+    maxPosition = floorDepth - elementWidth
+  }
+  
+  const isValid = x >= 0 && x <= maxPosition
+  const correctedX = Math.max(0, Math.min(x, maxPosition))
+  
+  return {
+    isValid,
+    correctedX,
+    maxX: maxPosition
+  }
 }
 
 /**
