@@ -27,14 +27,30 @@ export const useCameraState = () => {
   }
 
   const updateCameraPosition = (position: Vector3) => {
-    if (cameraState.value.isInitialized) {
-      cameraState.value.position = { x: position.x, y: position.y, z: position.z }
+    if (cameraState.value.isInitialized && position && position.x !== undefined) {
+      // Only update if position has actually changed to prevent unnecessary updates
+      const currentPos = cameraState.value.position
+      const threshold = 0.001
+      if (Math.abs(currentPos.x - position.x) > threshold || 
+          Math.abs(currentPos.y - position.y) > threshold || 
+          Math.abs(currentPos.z - position.z) > threshold) {
+        cameraState.value.position = { x: position.x, y: position.y, z: position.z }
+        console.log('Camera position updated:', cameraState.value.position)
+      }
     }
   }
 
   const updateCameraTarget = (target: Vector3) => {
     if (cameraState.value.isInitialized && target && target.x !== undefined) {
-      cameraState.value.target = { x: target.x, y: target.y, z: target.z }
+      // Only update if target has actually changed to prevent unnecessary updates
+      const currentTarget = cameraState.value.target
+      const threshold = 0.001
+      if (Math.abs(currentTarget.x - target.x) > threshold || 
+          Math.abs(currentTarget.y - target.y) > threshold || 
+          Math.abs(currentTarget.z - target.z) > threshold) {
+        cameraState.value.target = { x: target.x, y: target.y, z: target.z }
+        console.log('Camera target updated:', cameraState.value.target)
+      }
     }
   }
 
@@ -60,9 +76,11 @@ export const useCameraState = () => {
     )
   }
 
-  const initializeCameraState = (defaultPosition: Vector3, defaultTarget: Vector3, defaultZoom: number = 1) => {
+  const initializeCameraState = (defaultPosition?: Vector3, defaultTarget?: Vector3, defaultZoom: number = 1) => {
     if (!cameraState.value.isInitialized) {
-      setCameraState(defaultPosition, defaultTarget, defaultZoom)
+      const pos = defaultPosition || new ThreeVector3(0, 1, 0)
+      const target = defaultTarget || new ThreeVector3(0, 0, 0)
+      setCameraState(pos, target, defaultZoom)
     }
   }
 

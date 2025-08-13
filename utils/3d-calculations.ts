@@ -43,15 +43,15 @@ export const calcOffsetPosition = (
   switch (shape.position.orientation) {
     case 'front':
       // Front wall: positionX=0 means left edge of element aligns with left edge of floor
-      // In Three.js: negative X is towards left side of floor
-      x = -(floorWidthM / 2 - positionXM - shapeWidthM / 2)
+      // Lower positionX values should move element further left (more negative X)
+      x = floorWidthM / 2 - positionXM - shapeWidthM / 2
       y = positionYM + shapeHeightM / 2 + (floorHeightM * storey)
       z = floorDepthM / 2
       return [z, y, x]
 
     case 'back':
-      // Back wall: positionX=0 means left edge from user perspective (which is building right from front view)
-      // User measures from left when facing back wall, so position 0 = rightmost from front POV
+      // Back wall: positionX=0 means left edge from user perspective when facing back wall
+      // For consistent left-edge reference, use same logic as front wall but negate Z
       x = -(floorWidthM / 2 - positionXM - shapeWidthM / 2)
       y = positionYM + shapeHeightM / 2 + (floorHeightM * storey)
       z = -floorDepthM / 2
@@ -65,7 +65,8 @@ export const calcOffsetPosition = (
       return [z, y, x]
 
     case 'right':
-      // Right wall: should appear on right side of building (negative X due to coordinate flip)
+      // Right wall: positionX=0 means left edge from user perspective when facing right wall
+      // This corresponds to the front of the building, so use positive Z direction
       x = -floorWidthM / 2
       y = positionYM + shapeHeightM / 2 + (floorHeightM * storey)
       z = floorDepthM / 2 - positionXM - shapeWidthM / 2

@@ -96,6 +96,7 @@ import type { Project } from '~/types/project'
 import { calcOffsetPosition, calcOffsetSize, calculateRoofPosition } from '~/utils/3d-calculations'
 import { customThreeCreateRoof } from '~/scripts/customThree'
 import type { PerspectiveCamera } from 'three'
+import { Vector3 } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 interface Props {
@@ -149,30 +150,38 @@ const cameraTarget = computed(() => {
 onMounted(() => {
   setTimeout(() => {
     console.log('Initial camera setup - initializing state')
-    initializeCameraState()
+    // Create Vector3 objects with default values for proper initialization
+    const defaultPos = new Vector3(...defaultCameraPosition.value)
+    const defaultTarget = new Vector3(...defaultCameraTarget.value)
+    initializeCameraState(defaultPos, defaultTarget)
   }, 200)
 })
 
 // Handle camera and controls changes to save state
 const onControlsChange = () => {
-  if (cameraRef.value && controlsRef.value && controlsRef.value.target) {
-    // Update stored camera state when user interacts with controls
+  if (cameraRef.value && controlsRef.value && controlsRef.value.target && cameraState.value.isInitialized) {
+    // Only update stored camera state when user interacts with controls and camera is fully initialized
     updateCameraPosition(cameraRef.value.position)
     updateCameraTarget(controlsRef.value.target)
   }
 }
 
 // Watch for project changes and restore camera state after re-render
-// Only watch for changes that might affect scene structure, not property edits
+// Only watch for structural changes (project ID), not property edits that shouldn't affect camera
 watch(() => props.project?.id, () => {
   nextTick(() => {
     restoreCameraState()
   })
-})
+}, { deep: false }) // Explicitly set deep: false to avoid watching nested property changes
 
 // Function to restore camera state after scene updates
 const restoreCameraState = () => {
   if (cameraRef.value && controlsRef.value && cameraState.value.isInitialized) {
+    console.log('Restoring camera state:', cameraState.value)
+    
+    // Temporarily disable the onControlsChange handler to prevent feedback loops
+    const originalHandler = controlsRef.value.change
+    
     // Restore camera position
     cameraRef.value.position.set(
       cameraState.value.position.x,
