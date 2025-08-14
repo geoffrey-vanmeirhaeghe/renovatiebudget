@@ -39,6 +39,8 @@ export interface Roof {
   depth: number
   height: number
   heightPosition: number
+  positionX?: number  // Horizontal X position (optional, defaults to 0)
+  positionZ?: number  // Horizontal Z position (optional, defaults to 0)
 }
 
 export interface Project {

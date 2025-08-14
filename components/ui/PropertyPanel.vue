@@ -5,104 +5,108 @@
       <div class="panel-header">
         <h3>🔧 Dev Tools</h3>
       </div>
-      <div class="property-section">
-        <h4>Data Source</h4>
-        <div class="data-source-controls">
-          <button 
-            @click="loadStrapiData" 
-            :class="{ active: dataSource === 'strapi' }"
-            class="data-source-btn"
-          >
-            🌐 Strapi Data
-          </button>
-        </div>
-        <div class="data-source-info">
-          <small>Current: <strong>{{ dataSource === 'strapi' ? 'Strapi' : `Mock ${mockScenario}` }}</strong></small>
-        </div>
-      </div>
-
-      <div class="property-section">
-        <h4>Project Details</h4>
-        <div class="property-group">
-          <label>Title:</label>
+      <div class="property-section compact">
+        <h4>Project</h4>
+        <div class="property-group compact">
           <input 
             v-model="projectTitle"
             @input="updateProjectTitle"
             type="text"
             class="title-input"
-            placeholder="Enter project name"
+            placeholder="Project name"
           >
         </div>
-      </div>
-
-      <div class="property-section">
-        <h4>Building Elements</h4>
-        <div class="add-buttons">
+        <div class="compact-buttons">
+          <button 
+            @click="loadStrapiData" 
+            :class="{ active: dataSource === 'strapi' }"
+            class="compact-btn"
+            title="Load Strapi Data"
+          >
+            🌐
+          </button>
           <button 
             @click="quickAddFloor"
-            class="add-btn floor-btn"
+            class="compact-btn"
+            title="Add Floor"
           >
-            🏢 Add Floor
+            🏢
           </button>
-        </div>
-        <div class="add-info">
-          <small>New floors will be positioned above existing ones</small>
-        </div>
-      </div>
-
-      <div class="property-section">
-        <h4>Project Actions</h4>
-        <div class="action-controls">
           <button 
             @click="saveCurrentProject" 
             :disabled="!canSave || isSaving"
-            class="action-btn save-btn"
+            class="compact-btn save-btn"
+            :title="isSaving ? 'Saving...' : 'Save Project'"
           >
-            {{ isSaving ? '⏳ Saving...' : '💾 Save Project' }}
+            {{ isSaving ? '⏳' : '💾' }}
           </button>
           <button 
             @click="createNewProject" 
-            class="action-btn create-btn"
+            class="compact-btn"
+            title="New Project"
           >
-            ✨ New Project
+            ✨
           </button>
         </div>
-        <div class="action-info" v-if="saveStatus">
+        <div class="status-info" v-if="saveStatus">
           <small :class="{ error: saveStatus.includes('Error'), success: saveStatus.includes('Saved') }">
             {{ saveStatus }}
           </small>
         </div>
       </div>
       
-      <div class="property-section">
-        <h4>Mock Scenarios</h4>
-        <div class="scenario-controls">
+      <div class="property-section compact">
+        <h4>Scenarios</h4>
+        <div class="compact-buttons">
           <button 
             @click="loadMockScenario(1)" 
             :class="{ active: dataSource === 'mock' && mockScenario === 1 }"
-            class="scenario-btn"
+            class="compact-btn"
+            title="Single Floor"
           >
-            🏠 Single Floor
+            🏠
           </button>
           <button 
             @click="loadMockScenario(2)" 
             :class="{ active: dataSource === 'mock' && mockScenario === 2 }"
-            class="scenario-btn"
+            class="compact-btn"
+            title="Two Floors"
           >
-            🏢 Two Floors
+            🏢
           </button>
           <button 
             @click="loadMockScenario(3)" 
             :class="{ active: dataSource === 'mock' && mockScenario === 3 }"
-            class="scenario-btn"
+            class="compact-btn"
+            title="Attic House"
           >
-            🏘️ Attic House
+            🏘️
           </button>
         </div>
-        <div class="scenario-info">
-          <small v-if="dataSource === 'mock'">
-            <strong>{{ getScenarioDescription() }}</strong>
-          </small>
+      </div>
+
+      <div class="property-section compact">
+        <h4>Debug</h4>
+        <div class="compact-buttons">
+          <button 
+            @click="runApiTests" 
+            :disabled="isTestingApi"
+            class="compact-btn"
+            :title="isTestingApi ? 'Testing...' : 'Test API Endpoints'"
+          >
+            {{ isTestingApi ? '⏳' : '🧪' }}
+          </button>
+          <button 
+            @click="runPermissionCheck" 
+            :disabled="isCheckingPermissions"
+            class="compact-btn"
+            :title="isCheckingPermissions ? 'Checking...' : 'Check Permissions'"
+          >
+            {{ isCheckingPermissions ? '⏳' : '🔐' }}
+          </button>
+        </div>
+        <div class="debug-info" v-if="debugResults">
+          <small>{{ debugResults }}</small>
         </div>
       </div>
     </div>
@@ -358,6 +362,56 @@
       </div>
     </div>
 
+    <!-- Roof Position -->
+    <div v-if="selectedObject.type === 'roof'" class="property-section">
+      <h4>Roof Position</h4>
+      <div class="property-group">
+        <label>X Position:</label>
+        <input 
+          type="range" 
+          :min="Math.round(convertToDisplay(-1000))" 
+          :max="Math.round(convertToDisplay(1000))" 
+          :step="Math.round(convertToDisplay(5))"
+          :value="getRoofPosition('positionX')"
+          @input="updateRoofHorizontalPosition('positionX', $event.target.value)"
+          class="slider"
+        >
+        <input 
+          type="number"
+          :min="Math.round(convertToDisplay(-1000))"
+          :max="Math.round(convertToDisplay(1000))"
+          :step="Math.round(convertToDisplay(5))"
+          :value="getRoofPosition('positionX')"
+          @input="updateRoofHorizontalPosition('positionX', $event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">{{ getDisplayUnit() }}</span>
+      </div>
+      
+      <div class="property-group">
+        <label>Z Position:</label>
+        <input 
+          type="range" 
+          :min="Math.round(convertToDisplay(-1000))" 
+          :max="Math.round(convertToDisplay(1000))" 
+          :step="Math.round(convertToDisplay(5))"
+          :value="getRoofPosition('positionZ')"
+          @input="updateRoofHorizontalPosition('positionZ', $event.target.value)"
+          class="slider"
+        >
+        <input 
+          type="number"
+          :min="Math.round(convertToDisplay(-1000))"
+          :max="Math.round(convertToDisplay(1000))"
+          :step="Math.round(convertToDisplay(5))"
+          :value="getRoofPosition('positionZ')"
+          @input="updateRoofHorizontalPosition('positionZ', $event.target.value)"
+          class="number-input"
+        >
+        <span class="unit">{{ getDisplayUnit() }}</span>
+      </div>
+    </div>
+
     <!-- Floor Dimensions -->
     <div v-if="selectedObject.type === 'floor'" class="property-section">
       <h4>Floor Dimensions</h4>
@@ -419,7 +473,7 @@ const { selectedObject, clearSelection } = useSelection()
 const { updateProject, currentProject, loadProject } = useProject()
 const { getDisplayUnit, formatValue, convertToDisplay, convertFromDisplay } = useBuildingStandards()
 const { quickCreateElement, startCreating } = useElementCreation()
-const { saveProject, createProject, updateProject: updateStrapiProject } = useStrapi()
+const { saveProject, createProject, updateProject: updateStrapiProject, testApiEndpoints, checkPermissions } = useStrapi()
 
 // Computed properties for current object values (always fresh from project data)
 const currentObject = computed(() => {
@@ -429,6 +483,10 @@ const currentObject = computed(() => {
   
   if (type === 'floor') {
     return currentProject.value.floors[id]
+  }
+  
+  if (type === 'roof') {
+    return currentProject.value.roof
   }
   
   if ((type === 'window' || type === 'door') && floorId) {
@@ -461,6 +519,71 @@ const loadStrapiData = async () => {
 const isSaving = ref(false)
 const saveStatus = ref('')
 
+// Debug functionality
+const isTestingApi = ref(false)
+const isCheckingPermissions = ref(false)
+const debugResults = ref('')
+
+const runApiTests = async () => {
+  if (isTestingApi.value) return
+  
+  isTestingApi.value = true
+  debugResults.value = ''
+  
+  try {
+    console.log('🧪 Starting comprehensive API endpoint testing...')
+    const results = await testApiEndpoints()
+    
+    // Format results for display
+    const summary = [
+      `Projects: ${results.projects?.success ? 'OK' : 'FAILED'}`,
+      `Buildings: ${results.buildings?.success ? 'OK' : 'FAILED'}`,
+      `Populate: ${results.projectsWithPopulate?.success ? 'OK' : 'FAILED'}`,
+      `Create: ${results.buildingsCreate?.success ? 'OK' : 'FAILED'}`
+    ].join(', ')
+    
+    debugResults.value = `API Tests: ${summary}`
+    
+    // Show detailed console message
+    console.log('✅ API testing completed! Check console for full details.')
+  } catch (error) {
+    console.error('❌ API testing failed:', error)
+    debugResults.value = `API Tests Failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+  } finally {
+    isTestingApi.value = false
+  }
+}
+
+const runPermissionCheck = async () => {
+  if (isCheckingPermissions.value) return
+  
+  isCheckingPermissions.value = true
+  debugResults.value = ''
+  
+  try {
+    console.log('🔐 Starting permission check...')
+    const permissions = await checkPermissions()
+    
+    // Format permissions for display
+    const permissionSummary = [
+      `Read Projects: ${permissions.canReadProjects ? 'YES' : 'NO'}`,
+      `Read Buildings: ${permissions.canReadBuildings ? 'YES' : 'NO'}`,
+      `Create Buildings: ${permissions.canCreateBuildings ? 'YES' : 'NO'}`,
+      `Update Buildings: ${permissions.canUpdateBuildings ? 'YES' : 'NO'}`,
+      `Populate Relations: ${permissions.canPopulateRelations ? 'YES' : 'NO'}`
+    ].join(', ')
+    
+    debugResults.value = `Permissions: ${permissionSummary}`
+    
+    console.log('✅ Permission check completed! Check console for full details.')
+  } catch (error) {
+    console.error('❌ Permission check failed:', error)
+    debugResults.value = `Permission Check Failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+  } finally {
+    isCheckingPermissions.value = false
+  }
+}
+
 // Project title editing
 const projectTitle = ref('')
 
@@ -481,16 +604,22 @@ const saveCurrentProject = async () => {
   isSaving.value = true
   saveStatus.value = ''
   
+  console.log('🔍 DEBUG: Starting save process...')
+  console.log('📦 Current project before save:', JSON.stringify(currentProject.value, null, 2))
+  
   try {
+    console.log('💾 Calling saveProject...')
     const savedProject = await saveProject(currentProject.value)
+    console.log('✅ SaveProject returned:', JSON.stringify(savedProject, null, 2))
     
-    // Update the current project with the saved data (including any server-generated fields)
+    console.log('🔄 Reloading project from server...')
     await loadProject(savedProject.id, true)
+    console.log('✅ Project reloaded, current project now:', JSON.stringify(currentProject.value, null, 2))
     
-    saveStatus.value = '✅ Project metadata saved! (3D changes need more work)'
+    saveStatus.value = '✅ Project saved successfully!'
     setTimeout(() => { saveStatus.value = '' }, 5000)
   } catch (error) {
-    console.error('Save failed:', error)
+    console.error('❌ Save failed:', error)
     saveStatus.value = `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`
     setTimeout(() => { saveStatus.value = '' }, 5000)
   } finally {
@@ -873,6 +1002,29 @@ const updateFloorPosition = (position: 'positionX' | 'positionZ', value: string)
   
   // Set the position on the specific floor
   updatedProject.floors[selectedObject.value.id][position] = cmValue
+  
+  updateProject(updatedProject)
+}
+
+const getRoofPosition = (position: 'positionX' | 'positionZ') => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'roof') return 0
+  
+  const roof = currentProject.value.roof
+  // Use roof-specific position if available, otherwise default to 0
+  const cmValue = roof[position] || 0
+  return Math.round(convertToDisplay(cmValue))
+}
+
+const updateRoofHorizontalPosition = (position: 'positionX' | 'positionZ', value: string) => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'roof') return
+  
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Set the position on the roof
+  updatedProject.roof[position] = cmValue
   
   updateProject(updatedProject)
 }
@@ -1394,5 +1546,213 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
 
 .action-info .error {
   color: #ef4444;
+}
+
+/* Debug Tools Styling */
+.debug-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.debug-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.debug-btn:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+}
+
+.debug-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.test-btn:not(:disabled):hover {
+  border-color: #8b5cf6;
+  background: #faf5ff;
+}
+
+.permission-btn:not(:disabled):hover {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.debug-info {
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.debug-results {
+  font-family: monospace;
+  font-size: 10px;
+  color: #495057;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.debug-note {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.debug-note small {
+  color: #6c757d;
+  font-size: 10px;
+  font-style: italic;
+}
+
+/* Compact Layout Styles */
+.property-section.compact {
+  padding: 12px 16px;
+}
+
+.property-section.compact h4 {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.property-group.compact {
+  margin-bottom: 8px;
+}
+
+.compact-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.compact-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  min-width: 40px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.compact-btn:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+  transform: translateY(-1px);
+}
+
+.compact-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.compact-btn.active {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+}
+
+.compact-btn.save-btn:not(:disabled):hover {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: white;
+}
+
+.status-info {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.status-info small {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.status-info .success {
+  color: #22c55e;
+}
+
+.status-info .error {
+  color: #ef4444;
+}
+
+.debug-info {
+  margin-top: 4px;
+  text-align: center;
+}
+
+.debug-info small {
+  font-size: 10px;
+  color: #666;
+}
+
+/* Enhanced Tooltips */
+.compact-btn {
+  position: relative;
+}
+
+.compact-btn:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  animation: tooltip-fade-in 0.2s ease forwards;
+}
+
+.compact-btn:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  animation: tooltip-fade-in 0.2s ease forwards;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Prevent tooltips from showing when disabled */
+.compact-btn:disabled:hover::after,
+.compact-btn:disabled:hover::before {
+  display: none;
 }
 </style>

@@ -78,12 +78,24 @@
         </TresGroup>
 
         <!-- Roof - Always separate from floors -->
-        <primitive 
-            v-if="project.roof"
-            :object="customThreeCreateRoof(project.roof)"
-            :position="getRoofPosition(project.roof)"
-        >
-        </primitive>
+        <TresGroup v-if="project.roof" :position="getRoofPosition(project.roof)">
+            <primitive 
+                :object="customThreeCreateRoof(project.roof)"
+            >
+            </primitive>
+            <!-- Invisible clickable box overlay for roof selection -->
+            <Box
+                :args="[
+                    project.roof.depth / 100,
+                    project.roof.height / 100,
+                    project.roof.width / 100
+                ]"
+                :position="[0, project.roof.height / 200, 0]"
+                @click="selectRoof"
+            >
+                <TresMeshBasicMaterial :transparent="true" :opacity="0" />
+            </Box>
+        </TresGroup>
 
         <TresAmbientLight :intensity="0.75" />
         <TresGridHelper :args="[2.5, 20]" />
@@ -104,16 +116,33 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const { selectedObject, hoveredObject, selectObject, clearSelection, hoverObject, clearHover } = useSelection()
+// Use the new global element selection system
+const {
+  // Core selection functions
+  selectFloor,
+  selectWindow,
+  selectDoor,
+  selectRoof,
+  // Color functions
+  getFloorColor,
+  getWindowColor,
+  getDoorColor,
+  // Hover functions
+  hoverFloor,
+  hoverWindow,
+  hoverDoor,
+  // System management
+  initializeSelection,
+  isSelectionReady,
+  clearSelection,
+  clearHover,
+  selectedObject
+} = useElementSelection()
 
-// Prevent auto-selection during component initialization
-const isInitializing = ref(true)
+// Initialize the selection system after component mount
 onMounted(() => {
-  // Allow selections after a short delay to ensure 3D components are fully initialized
-  setTimeout(() => {
-    isInitializing.value = false
-    console.log('3D component initialization complete, selections now allowed')
-  }, 1000)
+  // Initialize selection system with the same delay as before
+  initializeSelection(1000)
 })
 
 const { cameraState, initializeCameraState, updateCameraPosition, updateCameraTarget, getCameraPosition, getCameraTarget } = useCameraState()
@@ -235,110 +264,11 @@ const getRoofPosition = (roof: any) => {
   return calculateRoofPosition(roof, floorWidth)
 }
 
-const selectWindow = (windowId: string, window: any, floorIndex: string | number) => {
-  if (isInitializing.value) {
-    console.log('BLOCKED window selection during initialization:', windowId)
-    return
-  }
-  selectObject({
-    id: windowId,
-    type: 'window',
-    object: window,
-    floorId: String(floorIndex) // Ensure floorId is always a string
-  })
-}
+// All selection and color functions are now provided by useElementSelection composable
+// No local selection functions needed - using selectFloor, selectWindow, selectDoor, selectRoof from composable
+// No local color functions needed - using getFloorColor, getWindowColor, getDoorColor from composable
 
-const selectDoor = (doorId: string, door: any, floorIndex: string | number) => {
-  if (isInitializing.value) {
-    console.log('BLOCKED door selection during initialization:', doorId)
-    return
-  }
-  selectObject({
-    id: doorId,
-    type: 'door',
-    object: door,
-    floorId: String(floorIndex) // Ensure floorId is always a string
-  })
-}
+// Hover functions are now provided by useElementSelection composable
+// Using hoverFloor, hoverWindow, hoverDoor from composable
 
-const selectFloor = (floorId: string | number, floor: any) => {
-  if (isInitializing.value) {
-    console.log('BLOCKED floor selection during initialization:', floorId)
-    return
-  }
-  selectObject({
-    id: String(floorId), // Ensure id is always a string
-    type: 'floor',
-    object: floor
-  })
-}
-
-// Compute colors for each element type - this ensures full reactivity
-const getFloorColor = (floorIndex: string | number, floor: any) => {
-  return computed(() => {
-    const current = selectedObject.value
-    if (!current || current.type !== 'floor') {
-      return floor.color
-    }
-    const normalizedCurrentId = String(current.id)
-    const normalizedFloorId = String(floorIndex)
-    return normalizedCurrentId === normalizedFloorId ? '#ffaa44' : floor.color
-  })
-}
-
-const getWindowColor = (windowId: string, floorIndex: string | number) => {
-  return computed(() => {
-    const current = selectedObject.value
-    if (!current || current.type !== 'window') {
-      return '#bdd7ff'
-    }
-    const normalizedCurrentId = String(current.id)
-    const normalizedCurrentFloorId = String(current.floorId)
-    const normalizedWindowId = String(windowId)
-    const normalizedFloorId = String(floorIndex)
-    
-    return normalizedCurrentId === normalizedWindowId && normalizedCurrentFloorId === normalizedFloorId ? '#ff6b35' : '#bdd7ff'
-  })
-}
-
-const getDoorColor = (doorId: string, floorIndex: string | number) => {
-  return computed(() => {
-    const current = selectedObject.value
-    if (!current || current.type !== 'door') {
-      return '#5c6063'
-    }
-    const normalizedCurrentId = String(current.id)
-    const normalizedCurrentFloorId = String(current.floorId)
-    const normalizedDoorId = String(doorId)
-    const normalizedFloorId = String(floorIndex)
-    
-    return normalizedCurrentId === normalizedDoorId && normalizedCurrentFloorId === normalizedFloorId ? '#ff6b35' : '#5c6063'
-  })
-}
-
-const hoverWindow = (windowId: string, window: any, floorIndex: string | number) => {
-  hoverObject({
-    id: windowId,
-    type: 'window',
-    object: window,
-    floorId: String(floorIndex) // Ensure floorId is always a string
-  })
-}
-
-const hoverDoor = (doorId: string, door: any, floorIndex: string | number) => {
-  hoverObject({
-    id: doorId,
-    type: 'door',
-    object: door,
-    floorId: String(floorIndex) // Ensure floorId is always a string
-  })
-}
-
-const hoverFloor = (floorId: string | number, floor: any) => {
-  hoverObject({
-    id: String(floorId), // Ensure id is always a string
-    type: 'floor',
-    object: floor
-  })
-}
 </script>
