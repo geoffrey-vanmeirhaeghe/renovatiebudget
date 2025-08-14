@@ -36,6 +36,21 @@
       </div>
 
       <div class="property-section">
+        <h4>Building Elements</h4>
+        <div class="add-buttons">
+          <button 
+            @click="quickAddFloor"
+            class="add-btn floor-btn"
+          >
+            🏢 Add Floor
+          </button>
+        </div>
+        <div class="add-info">
+          <small>New floors will be positioned above existing ones</small>
+        </div>
+      </div>
+
+      <div class="property-section">
         <h4>Project Actions</h4>
         <div class="action-controls">
           <button 
@@ -567,6 +582,101 @@ const quickAddDoor = () => {
   quickCreateElement('front') // Default to front wall
 }
 
+/**
+ * Generate a unique floor ID based on existing floors
+ */
+const generateFloorId = (floors: Record<string, any>): string => {
+  const existingStoreys = Object.values(floors).map((floor: any) => floor.storey)
+  const maxStorey = existingStoreys.length > 0 ? Math.max(...existingStoreys) : -1
+  return (maxStorey + 1).toString()
+}
+
+/**
+ * Calculate the height position for a new floor
+ */
+const calculateFloorHeightPosition = (floors: Record<string, any>): number => {
+  if (Object.keys(floors).length === 0) return 0
+  
+  // Find the highest positioned floor and add its height
+  let maxPosition = 0
+  for (const floor of Object.values(floors) as any[]) {
+    const topPosition = floor.heightPosition + floor.height
+    if (topPosition > maxPosition) {
+      maxPosition = topPosition
+    }
+  }
+  
+  return maxPosition
+}
+
+/**
+ * Calculate the new roof position based on all floors
+ * The roof should sit on top of the highest floor (floor.heightPosition + floor.height)
+ */
+const calculateRoofHeightPosition = (floors: Record<string, any>): number => {
+  let maxPosition = 0
+  
+  // Find the highest point of all floors
+  for (const floor of Object.values(floors) as any[]) {
+    const topPosition = floor.heightPosition + floor.height
+    if (topPosition > maxPosition) {
+      maxPosition = topPosition
+    }
+  }
+  
+  return maxPosition
+}
+
+/**
+ * Update roof position to sit on top of highest floor
+ * Call this whenever floors are added, removed, or their heights change
+ */
+const updateRoofPosition = (project: any): void => {
+  if (project.roof) {
+    project.roof.heightPosition = calculateRoofHeightPosition(project.floors)
+  }
+}
+
+/**
+ * Quick add a new floor to the project
+ */
+const quickAddFloor = () => {
+  if (!currentProject.value) return
+  
+  // Create a deep copy for reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Generate new floor properties
+  const newFloorId = generateFloorId(updatedProject.floors)
+  const heightPosition = calculateFloorHeightPosition(updatedProject.floors)
+  const storeyNumber = parseInt(newFloorId)
+  
+  // Default floor properties (matching Belgian building standards)
+  const newFloor = {
+    storey: storeyNumber,
+    height: 250, // 2.5m standard ceiling height
+    heightPosition: heightPosition,
+    color: storeyNumber % 2 === 0 ? '#f8f9fa' : '#e9ecef', // Alternate colors
+    windows: {},
+    doors: {}
+    // width and depth will fall back to generalAttributes.floorSize
+  }
+  
+  // Add the new floor
+  updatedProject.floors[newFloorId] = newFloor
+  
+  // CRITICAL: Update roof position to sit on top of highest floor
+  // This fixes the issue where roof could end up inside or below floors
+  updateRoofPosition(updatedProject)
+  
+  // Update the project
+  updateProject(updatedProject)
+  
+  // Auto-select the new floor for immediate editing
+  const { selectObject } = useSelection()
+  selectObject({ type: 'floor', id: newFloorId, object: newFloor })
+}
+
 
 const isWindowOrDoor = computed(() => {
   if (!selectedObject.value) return false
@@ -702,6 +812,10 @@ const updateFloorHeight = (value: string) => {
   // Create a deep copy to trigger reactivity
   const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
   updatedProject.floors[selectedObject.value.id].height = cmValue
+  
+  // CRITICAL: Update roof position when floor height changes
+  // This ensures roof always sits on top of the highest floor
+  updateRoofPosition(updatedProject)
   
   updateProject(updatedProject)
 }
@@ -1205,6 +1319,11 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
 .door-btn:hover {
   border-color: #8b5cf6;
   background: #faf5ff;
+}
+
+.floor-btn:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
 }
 
 .add-info {
