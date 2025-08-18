@@ -1,79 +1,11 @@
 <template>
   <ClientOnly>
-    <!-- Main Control Panel (only visible when nothing is selected) -->
-    <div v-if="!selectedObject" class="data-source-panel">
-      <div class="panel-header">
-        <h3>📐 Project Controls</h3>
-      </div>
-      
-      <!-- Project Management -->
-      <div class="property-section compact">
-        <h4>Project</h4>
-        <div class="property-group compact">
-          <input 
-            v-model="projectTitle"
-            @input="updateProjectTitle"
-            type="text"
-            class="title-input"
-            placeholder="Project name"
-          >
-        </div>
-        <div class="compact-buttons">
-          <button 
-            @click="saveCurrentProject" 
-            :disabled="!canSave || isSaving"
-            class="compact-btn save-btn"
-            :title="isSaving ? 'Saving...' : 'Save Project'"
-          >
-            {{ isSaving ? '⏳' : '💾' }}
-          </button>
-          <button 
-            @click="createNewProject" 
-            class="compact-btn"
-            title="New Project"
-          >
-            ✨
-          </button>
-          <button 
-            @click="loadStrapiData" 
-            :class="{ active: dataSource === 'strapi' }"
-            class="compact-btn"
-            title="Load from Strapi"
-          >
-            🌐
-          </button>
-        </div>
-        <div class="status-info" v-if="saveStatus">
-          <small :class="{ error: saveStatus.includes('Error'), success: saveStatus.includes('Saved') }">
-            {{ saveStatus }}
-          </small>
-        </div>
-      </div>
-
-      <!-- Building Tools -->
-      <div class="property-section compact">
-        <h4>Building Tools</h4>
-        <div class="compact-buttons">
-          <button 
-            @click="quickAddFloor"
-            class="compact-btn"
-            title="Add Floor"
-          >
-            🏢 Add Floor
-          </button>
-          <button 
-            @click="showClearHouseConfirmation"
-            class="compact-btn clear-house-btn"
-            title="Clear entire house (remove all floors)"
-          >
-            🧹 Clear House
-          </button>
-        </div>
-      </div>
-      
-    </div>
-
-    <div v-if="selectedObject" class="property-panel">
+    <!-- LEGACY COMPONENT - Most functionality moved to new hierarchical UI -->
+    <!-- This component is kept for backward compatibility and will be deprecated -->
+    <!-- New UI uses: TopMenu, ToolDock, ToolPanel, SidePanel, PropertyPanelActions -->
+    
+    <!-- Hidden legacy panel - functionality moved to SidePanel -->
+    <div v-if="false && selectedObject" class="property-panel legacy-hidden">
     <div class="panel-header">
       <h3>{{ getObjectTitle() }}</h3>
       <button @click="clearSelection" class="close-btn">×</button>
@@ -1661,7 +1593,7 @@ const moveFloorDown = () => {
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 1000;
+  z-index: 600; /* Legacy property panel */
 }
 
 .panel-header {
@@ -1856,7 +1788,7 @@ const moveFloorDown = () => {
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 1000;
+  z-index: 600; /* Legacy property panel */
 }
 
 .data-source-controls {
@@ -2248,7 +2180,7 @@ const moveFloorDown = () => {
   border-radius: 4px;
   font-size: 11px;
   white-space: nowrap;
-  z-index: 1000;
+  z-index: 700; /* Tooltips above other UI elements */
   pointer-events: none;
   opacity: 0;
   animation: tooltip-fade-in 0.2s ease forwards;
@@ -2262,7 +2194,7 @@ const moveFloorDown = () => {
   transform: translateX(-50%);
   border: 4px solid transparent;
   border-top-color: rgba(0, 0, 0, 0.9);
-  z-index: 1000;
+  z-index: 700; /* Tooltips above other UI elements */
   pointer-events: none;
   opacity: 0;
   animation: tooltip-fade-in 0.2s ease forwards;
@@ -2377,7 +2309,7 @@ const moveFloorDown = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 10000; /* Modals - highest level */
   backdrop-filter: blur(2px);
 }
 
