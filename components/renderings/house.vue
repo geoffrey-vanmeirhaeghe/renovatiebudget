@@ -46,6 +46,8 @@
             -(floor.positionX || 0) / 100,
             ]"
             @click="selectFloor(index, floor)"
+            @mouseenter="hoverFloor(index, floor)"
+            @mouseleave="clearHover"
         >
             <TresMeshToonMaterial 
                 :color="getFloorColor(index, floor).value"
@@ -58,6 +60,8 @@
             :args="calculateObjectSize(door)"
             :position="calculateObjectPosition(door, floor)"
             @click="selectDoor(doorId, door, index)"
+            @mouseenter="hoverDoor(doorId, door, index)"
+            @mouseleave="clearHover"
         >
             <TresMeshToonMaterial 
                 :color="getDoorColor(doorId, index).value"
@@ -70,6 +74,8 @@
             :args="calculateObjectSize(window)"
             :position="calculateObjectPosition(window, floor)"
             @click="selectWindow(windowId, window, index)"
+            @mouseenter="hoverWindow(windowId, window, index)"
+            @mouseleave="clearHover"
         >
             <TresMeshToonMaterial 
                 :color="getWindowColor(windowId, index).value"
@@ -78,9 +84,9 @@
         </TresGroup>
 
         <!-- Roof - Always separate from floors -->
-        <TresGroup v-if="project.roof" :position="getRoofPosition(project.roof)">
+        <TresGroup v-if="project.roof && roofObject" :position="getRoofPosition(project.roof)">
             <primitive 
-                :object="customThreeCreateRoof(project.roof)"
+                :object="roofObject"
             >
             </primitive>
             <!-- Invisible clickable box overlay for roof selection -->
@@ -92,6 +98,8 @@
                 ]"
                 :position="[0, project.roof.height / 200, 0]"
                 @click="selectRoof"
+                @mouseenter="hoverRoof(project.roof)"
+                @mouseleave="clearHover"
             >
                 <TresMeshBasicMaterial :transparent="true" :opacity="0" />
             </Box>
@@ -127,10 +135,12 @@ const {
   getFloorColor,
   getWindowColor,
   getDoorColor,
+  getRoofColor,
   // Hover functions
   hoverFloor,
   hoverWindow,
   hoverDoor,
+  hoverRoof,
   // System management
   initializeSelection,
   isSelectionReady,
@@ -263,6 +273,13 @@ const getRoofPosition = (roof: any) => {
   const floorWidth = props.project.generalAttributes.floorSize.width
   return calculateRoofPosition(roof, floorWidth)
 }
+
+// Reactive roof object that updates based on hover/selection state
+const roofObject = computed(() => {
+  if (!props.project.roof) return null
+  const color = getRoofColor().value
+  return customThreeCreateRoof(props.project.roof, color)
+})
 
 // All selection and color functions are now provided by useElementSelection composable
 // No local selection functions needed - using selectFloor, selectWindow, selectDoor, selectRoof from composable

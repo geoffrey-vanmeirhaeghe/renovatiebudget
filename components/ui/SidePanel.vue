@@ -360,6 +360,31 @@
       </div>
     </div>
 
+    <!-- Loading state -->
+    <div v-else-if="isProjectLoading" class="loading-panel">
+      <div class="panel-header">
+        <h3>Loading...</h3>
+      </div>
+      
+      <div class="loading-content">
+        <div class="loading-spinner">⟳</div>
+        <p>Loading project data...</p>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div v-else-if="hasProjectError" class="error-panel">
+      <div class="panel-header">
+        <h3>Connection Error</h3>
+      </div>
+      
+      <div class="error-content">
+        <div class="error-icon">⚠️</div>
+        <p>Unable to connect to Strapi. Using local data.</p>
+        <small>The panel will appear once data is loaded.</small>
+      </div>
+    </div>
+
     <!-- Default state - no selection -->
     <div v-else class="default-panel">
       <div class="panel-header">
@@ -414,10 +439,13 @@ const emit = defineEmits<{
 }>()
 
 const { selectedObject, clearSelection } = useSelection()
-const { updateProject, currentProject } = useProject()
+const { updateProject, currentProject, isLoading: isProjectLoading, error: projectError } = useProject()
 const { getDisplayUnit, convertToDisplay, convertFromDisplay } = useBuildingStandards()
 const { quickCreateElement, startCreating } = useElementCreation()
 const { getRoofTypeOptions } = useStrapi()
+
+// Computed properties for loading/error states
+const hasProjectError = computed(() => !!projectError.value)
 
 // Computed properties for current object values
 const currentObject = computed(() => {
@@ -931,6 +959,7 @@ const updateRoofHorizontalPosition = (position: 'positionX' | 'positionZ', value
   bottom: 20px; /* Bottom positioning */
   left: 20px; /* Left positioning - same as menu */
   width: 320px;
+  max-width: 320px; /* Prevent expansion */
   max-height: calc(100vh - 120px); /* Leave space for bottom positioning */
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -939,6 +968,11 @@ const updateRoofHorizontalPosition = (position: 'positionX' | 'positionZ', value
   backdrop-filter: blur(20px);
   z-index: 100; /* Standardized low z-index */
   overflow-y: auto;
+  /* Prevent layout shift by ensuring consistent sizing */
+  min-height: 200px; /* Minimum size to prevent collapse */
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .panel-header {
@@ -1262,6 +1296,51 @@ const updateRoofHorizontalPosition = (position: 'positionX' | 'positionZ', value
   color: #6b7280;
   font-size: 13px;
   line-height: 1.4;
+}
+
+/* Loading and error state styles */
+.loading-panel,
+.error-panel {
+  padding: 0;
+}
+
+.loading-content,
+.error-content {
+  padding: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.loading-spinner {
+  font-size: 24px;
+  animation: spin 2s linear infinite;
+  color: #3b82f6;
+}
+
+.error-icon {
+  font-size: 24px;
+  color: #dc2626;
+}
+
+.loading-content p,
+.error-content p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.error-content small {
+  color: #9ca3af;
+  font-size: 12px;
+  font-style: italic;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Category tools panel styles */

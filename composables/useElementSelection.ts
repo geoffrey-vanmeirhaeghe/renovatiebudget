@@ -18,32 +18,39 @@ export type ElementDataMapping = {
 export interface ElementColorConfig {
   default: string
   selected: string
+  hover: string
 }
 
 const ELEMENT_COLORS: Record<ElementType, ElementColorConfig> = {
   floor: {
     default: '', // Uses floor.color from data
-    selected: '#ffaa44'
+    selected: '#ffaa44',
+    hover: '#ffcc77'
   },
   window: {
     default: '#bdd7ff',
-    selected: '#ff6b35'
+    selected: '#ff6b35',
+    hover: '#87ceeb'
   },
   door: {
     default: '#5c6063',
-    selected: '#ff6b35'
+    selected: '#ff6b35',
+    hover: '#708090'
   },
   roof: {
     default: '#8B4513', // Brown default for roof
-    selected: '#ff6b35'
+    selected: '#ff6b35',
+    hover: '#a0522d'
   },
   wall: {
     default: '#f5f5f5', // Light gray for walls (future)
-    selected: '#ff6b35'
+    selected: '#ff6b35',
+    hover: '#e6e6e6'
   },
   furniture: {
     default: '#deb887', // Burlywood for furniture (future)
-    selected: '#ff6b35'
+    selected: '#ff6b35',
+    hover: '#daa520'
   }
 }
 
@@ -52,7 +59,7 @@ const ELEMENT_COLORS: Record<ElementType, ElementColorConfig> = {
  * Centralizes selection logic, color management, and initialization handling
  */
 export const useElementSelection = () => {
-  const { selectedObject, selectObject, clearSelection, hoverObject, clearHover } = useSelection()
+  const { selectedObject, hoveredObject, selectObject, clearSelection, hoverObject, clearHover } = useSelection()
 
   // Initialization state management - prevents premature selections
   const isSelectionReady = ref(false)
@@ -120,7 +127,7 @@ export const useElementSelection = () => {
 
   /**
    * Get computed color for any element type
-   * Handles selection highlighting automatically
+   * Handles selection and hover highlighting automatically
    */
   const getElementColor = (
     type: ElementType,
@@ -130,6 +137,7 @@ export const useElementSelection = () => {
   ) => {
     return computed(() => {
       const current = selectedObject.value
+      const hovered = hoveredObject.value
       
       // Get color config for this element type
       const colorConfig = ELEMENT_COLORS[type]
@@ -141,29 +149,37 @@ export const useElementSelection = () => {
         defaultColor = colorConfig.default
       }
 
-      // Check if this element is selected
-      if (!current || current.type !== type) {
-        return defaultColor
-      }
-
-      const normalizedCurrentId = String(current.id)
       const normalizedElementId = String(id)
       
-      // For elements with floor association (windows, doors), check both ID and floor
-      if (floorId && current.floorId) {
-        const normalizedCurrentFloorId = String(current.floorId)
-        const normalizedFloorId = String(floorId)
+      // Helper function to check if element matches (handles floor association)
+      const isElementMatch = (obj: any) => {
+        if (!obj || obj.type !== type) return false
         
-        return normalizedCurrentId === normalizedElementId && 
-               normalizedCurrentFloorId === normalizedFloorId 
-          ? colorConfig.selected 
-          : defaultColor
+        const normalizedObjId = String(obj.id)
+        
+        // For elements with floor association (windows, doors), check both ID and floor
+        if (floorId && obj.floorId) {
+          const normalizedObjFloorId = String(obj.floorId)
+          const normalizedFloorId = String(floorId)
+          
+          return normalizedObjId === normalizedElementId && 
+                 normalizedObjFloorId === normalizedFloorId
+        }
+        
+        // For elements without floor association (floors, roof), check only ID
+        return normalizedObjId === normalizedElementId
+      }
+
+      // Priority: Selected > Hovered > Default
+      if (isElementMatch(current)) {
+        return colorConfig.selected
       }
       
-      // For elements without floor association (floors, roof), check only ID
-      return normalizedCurrentId === normalizedElementId 
-        ? colorConfig.selected 
-        : defaultColor
+      if (isElementMatch(hovered)) {
+        return colorConfig.hover
+      }
+      
+      return defaultColor
     })
   }
 
@@ -202,24 +218,38 @@ export const useElementSelection = () => {
     hoverElement('door', id, door, String(floorId))
   }
 
+  const hoverRoof = (roof: Roof) => {
+    hoverElement('roof', 'roof', roof)
+  }
+
   /**
    * Convenience color functions with proper typing
    */
   const getFloorColor = (floorId: string | number, floor: Floor) => {
     return computed(() => {
       const current = selectedObject.value
+      const hovered = hoveredObject.value
       
-      // Use floor's default color
-      if (!current || current.type !== 'floor') {
-        return floor.color
-      }
-      
-      const normalizedCurrentId = String(current.id)
       const normalizedFloorId = String(floorId)
       
-      return normalizedCurrentId === normalizedFloorId 
-        ? ELEMENT_COLORS.floor.selected 
-        : floor.color
+      // Check if this floor is selected
+      if (current && current.type === 'floor') {
+        const normalizedCurrentId = String(current.id)
+        if (normalizedCurrentId === normalizedFloorId) {
+          return ELEMENT_COLORS.floor.selected
+        }
+      }
+      
+      // Check if this floor is hovered
+      if (hovered && hovered.type === 'floor') {
+        const normalizedHoveredId = String(hovered.id)
+        if (normalizedHoveredId === normalizedFloorId) {
+          return ELEMENT_COLORS.floor.hover
+        }
+      }
+      
+      // Use floor's default color
+      return floor.color
     })
   }
 
@@ -253,6 +283,7 @@ export const useElementSelection = () => {
     hoverFloor,
     hoverWindow,
     hoverDoor,
+    hoverRoof,
     
     // Color functions
     getFloorColor,

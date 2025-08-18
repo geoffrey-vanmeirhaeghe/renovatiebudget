@@ -1,7 +1,7 @@
 import { Mesh, MeshBasicMaterial, Shape, Vector2, ExtrudeGeometry } from 'three'
 import type { Roof } from '~/types/project'
 
-export const customThreeCreateRoof = (roof: Roof): Mesh => {
+export const customThreeCreateRoof = (roof: Roof, color: string = '#8B4513'): Mesh => {
     // Convert dimensions from cm to meters
     const heightM = roof.height / 100
     const depthM = roof.depth / 100
@@ -19,7 +19,7 @@ export const customThreeCreateRoof = (roof: Roof): Mesh => {
     }
     
     const geometry = new ExtrudeGeometry(roofShape, extrudeSettings)
-    const material = new MeshBasicMaterial({ color: 0x963411 })
+    const material = new MeshBasicMaterial({ color: color })
     const roofLayout = new Mesh(geometry, material)
 
     return roofLayout
