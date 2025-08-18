@@ -11,12 +11,17 @@ const transformFloor = (strapiFloor: any): Floor => {
   // Windows and doors are now properly populated from Strapi
   const windowsData = strapiFloor.Windows || []
   const doorsData = strapiFloor.Doors || []
+  const dimensions = strapiFloor.Dimensions || {}
   
   return {
     storey: strapiFloor.Storey,
-    height: strapiFloor.Dimensions?.height || 250,
+    height: dimensions.height || 250,
     heightPosition: strapiFloor.HeightPosition || (strapiFloor.Storey * 250),
     color: strapiFloor.Color || '#efefef',
+    ...(dimensions.width !== undefined && { width: dimensions.width }),
+    ...(dimensions.depth !== undefined && { depth: dimensions.depth }),
+    ...(strapiFloor.positionX !== undefined && { positionX: strapiFloor.positionX }),
+    ...(strapiFloor.positionZ !== undefined && { positionZ: strapiFloor.positionZ }),
     windows: transformWindowsOrDoors(windowsData),
     doors: transformWindowsOrDoors(doorsData)
   }
@@ -67,18 +72,20 @@ const transformRoof = (strapiRoof: any): Roof => {
     width: dimensions.width || 1150,
     depth: dimensions.depth || 800,
     height: dimensions.height || 250,
-    heightPosition: dimensions.heightPosition || 500
+    heightPosition: dimensions.heightPosition || 500,
+    ...(dimensions.positionX !== undefined && { positionX: dimensions.positionX }),
+    ...(dimensions.positionZ !== undefined && { positionZ: dimensions.positionZ })
   }
 }
 
 // Reverse transformation: Convert frontend Project to Strapi format
 const transformProjectToStrapi = (project: Project): any => {
-  // Use existing transformation functions to handle building relations
-  const mainFloor = project.floors['0'] // Use first floor only (Strapi schema limitation)
+  // Transform all floors (now supports multiple floors)
+  const floorsArray = Object.values(project.floors).map(floor => transformFloorToStrapi(floor))
   
   const building = {
     Description: `Building for project: ${project.name || 'Unnamed Project'}`, // Required field
-    floor: mainFloor ? transformFloorToStrapi(mainFloor) : null,
+    floors: floorsArray,
     Roof: project.roof ? [transformRoofToStrapi(project.roof)] : []
   }
   
@@ -91,11 +98,25 @@ const transformProjectToStrapi = (project: Project): any => {
 
 // Reverse transformation: Convert frontend Floor to Strapi format
 const transformFloorToStrapi = (floor: Floor): any => {
+  // Generate descriptive name based on floor number
+  const getFloorDescription = (storey: number): string => {
+    if (storey === 0) return 'Ground Floor'
+    if (storey === 1) return 'First Floor' 
+    if (storey === 2) return 'Second Floor'
+    if (storey === 3) return 'Third Floor'
+    return `Floor ${storey}`
+  }
+
   return {
     Storey: floor.storey,
+    Description: getFloorDescription(floor.storey), // Required field
     Dimensions: {
-      height: floor.height
+      height: floor.height,
+      ...(floor.width !== undefined && { width: floor.width }),
+      ...(floor.depth !== undefined && { depth: floor.depth })
     },
+    ...(floor.positionX !== undefined && { positionX: floor.positionX }),
+    ...(floor.positionZ !== undefined && { positionZ: floor.positionZ }),
     HeightPosition: floor.heightPosition,
     Color: floor.color,
     Windows: transformWindowsOrDoorsToStrapi(floor.windows || {}, 'windows'),
@@ -143,7 +164,9 @@ const transformRoofToStrapi = (roof: Roof): any => {
       width: roof.width,
       depth: roof.depth,
       height: roof.height,
-      heightPosition: roof.heightPosition
+      heightPosition: roof.heightPosition,
+      ...(roof.positionX !== undefined && { positionX: roof.positionX }),
+      ...(roof.positionZ !== undefined && { positionZ: roof.positionZ })
     }
   }
 }
@@ -153,10 +176,12 @@ const transformProject = (strapiProject: any): Project => {
   // Strapi v5 direct data structure (no nested attributes)
   const building = strapiProject.building
   
-  // Transform floors from the building relation
+  // Transform floors from the building relation (now supports multiple floors)
   const floors: Record<string, Floor> = {}
-  if (building?.floor) {
-    floors['0'] = transformFloor(building.floor)
+  if (building?.floors && Array.isArray(building.floors)) {
+    building.floors.forEach((strapiFloor: any) => {
+      floors[strapiFloor.Storey.toString()] = transformFloor(strapiFloor)
+    })
   }
   
   const transformedProject = {
@@ -284,7 +309,7 @@ export const useStrapi = () => {
     
     try {
       // Use the working populate syntax from our tests with deep nesting for Windows/Doors
-      const endpoint = `/api/projects/${projectId}?populate[building][populate][floor][populate][Windows]=true&populate[building][populate][floor][populate][Doors]=true&populate[building][populate][Roof]=true`
+      const endpoint = `/api/projects/${projectId}?populate[building][populate][floors][populate][Windows]=true&populate[building][populate][floors][populate][Doors]=true&populate[building][populate][Roof]=true`
       const response = await client<{data: any}>(endpoint)
       
       console.log(`✅ ${operation} - Success:`, {
@@ -307,7 +332,7 @@ export const useStrapi = () => {
     
     try {
       // Use the working populate syntax from our tests with deep nesting for Windows/Doors
-      const endpoint = '/api/projects?populate[building][populate][floor][populate][Windows]=true&populate[building][populate][floor][populate][Doors]=true&populate[building][populate][Roof]=true'
+      const endpoint = '/api/projects?populate[building][populate][floors][populate][Windows]=true&populate[building][populate][floors][populate][Doors]=true&populate[building][populate][Roof]=true'
       const response = await client<{data: any[]}>(endpoint)
       
       console.log(`✅ ${operation} - Success:`, {
@@ -595,6 +620,57 @@ export const useStrapi = () => {
     }
   }
   
+  // Helper function to update floors as separate entities (relations)
+  const updateFloorsAsRelations = async (buildingId: string, floorsData: any[]): Promise<void> => {
+    console.log('🏠 Updating floors as relations...')
+    
+    // Get existing floors for this building
+    const buildingResponse = await client<{data: any}>(`/api/buildings/${buildingId}?populate=floors`)
+    const existingFloors = buildingResponse.data.floors || []
+    
+    console.log(`🔍 Found ${existingFloors.length} existing floors, need ${floorsData.length} floors`)
+    
+    const floorIds: string[] = []
+    
+    // Process each floor from the frontend
+    for (let i = 0; i < floorsData.length; i++) {
+      const floorData = floorsData[i]
+      const existingFloor = existingFloors.find((f: any) => f.Storey === floorData.Storey)
+      
+      if (existingFloor) {
+        // Update existing floor
+        console.log(`🔄 Updating existing floor (Storey ${floorData.Storey})...`)
+        console.log(`🔍 Floor data for update:`, JSON.stringify(floorData, null, 2))
+        await client(`/api/floors/${existingFloor.documentId}`, {
+          method: 'PUT',
+          body: { data: floorData }
+        })
+        floorIds.push(existingFloor.documentId)
+      } else {
+        // Create new floor
+        console.log(`🆕 Creating new floor (Storey ${floorData.Storey})...`)
+        console.log(`🔍 Floor data being sent:`, JSON.stringify(floorData, null, 2))
+        const newFloor = await client('/api/floors', {
+          method: 'POST',
+          body: { data: floorData }
+        })
+        floorIds.push(newFloor.data.documentId)
+      }
+    }
+    
+    // Update building with all floor IDs
+    await client(`/api/buildings/${buildingId}`, {
+      method: 'PUT',
+      body: { 
+        data: { 
+          floors: floorIds
+        } 
+      }
+    })
+    
+    console.log(`✅ Updated building with ${floorIds.length} floors`)
+  }
+
   // Helper function to update roof relations
   const updateRoofRelations = async (buildingId: string, roofData: any[]): Promise<void> => {
     console.log('🏠 Updating roof relations...')
@@ -635,18 +711,23 @@ export const useStrapi = () => {
       console.log('ℹ️ No existing building found or error occurred, will create new one')
     }
     
-    const mainFloor = project.floors['0'] // Use first floor only (Strapi schema limitation)
+    // Transform all floors (now supports multiple floors)
+    const floorsArray = Object.values(project.floors).map(floor => {
+      const transformed = transformFloorToStrapi(floor)
+      console.log(`🔄 Transformed floor ${floor.storey}:`, JSON.stringify(transformed, null, 2))
+      return transformed
+    })
     
-    // Prepare building data with transformed floor and roof
+    // Prepare building data with transformed floors and roof
     const buildingData = {
       Description: `Building for project: ${project.name || 'Unnamed Project'}`,
-      floor: mainFloor ? transformFloorToStrapi(mainFloor) : null,
+      floors: floorsArray,
       Roof: project.roof ? [transformRoofToStrapi(project.roof)] : []
     }
     
     console.log('📦 Building data to save:', {
-      hasFloor: !!buildingData.floor,
-      floorStorey: buildingData.floor?.Storey,
+      floorsCount: buildingData.floors?.length || 0,
+      floorStoreys: buildingData.floors?.map(f => f.Storey) || [],
       roofCount: buildingData.Roof?.length || 0,
       roofType: buildingData.Roof?.[0]?.Type
     })
@@ -663,7 +744,7 @@ export const useStrapi = () => {
         // Step 1: Update building basic data only (without embedded relations)
         const basicBuildingData = {
           Description: buildingData.Description
-          // Don't include floor or Roof here - will update separately
+          // Don't include floors or Roof here - will update separately
         }
         
         await client<{data: any}>(`/api/buildings/${buildingId}`, {
@@ -673,9 +754,9 @@ export const useStrapi = () => {
         
         console.log(`✅ Basic building data updated`)
         
-        // Step 2: Update floor with complete Windows/Doors data
-        if (buildingData.floor) {
-          await updateFloorWithRelations(buildingId, buildingData.floor)
+        // Step 2: Handle floors as separate entities (relations, not components)
+        if (buildingData.floors && buildingData.floors.length > 0) {
+          await updateFloorsAsRelations(buildingId, buildingData.floors)
         }
         
         // Step 3: Update roof separately 
@@ -686,15 +767,15 @@ export const useStrapi = () => {
         console.log(`✅ ${updateOperation} - All relations updated successfully`)
         
         // Verify the update actually worked by fetching the building WITH relations
-        const verificationResponse = await client<{data: any}>(`/api/buildings/${buildingId}?populate[floor][populate][Windows]=true&populate[floor][populate][Doors]=true&populate[Roof]=true`)
+        const verificationResponse = await client<{data: any}>(`/api/buildings/${buildingId}?populate[floors][populate][Windows]=true&populate[floors][populate][Doors]=true&populate[Roof]=true`)
         console.log('🔍 Building after update (populated):', JSON.stringify(verificationResponse.data, null, 2))
         
         // Verify that the relations are actually populated
-        if (!verificationResponse.data.floor && !verificationResponse.data.Roof?.length) {
+        if (!verificationResponse.data.floors?.length && !verificationResponse.data.Roof?.length) {
           console.warn('⚠️ Warning: Building verification shows no populated relations!')
         } else {
           console.log('✅ Verification successful - building has populated relations:', {
-            hasFloor: !!verificationResponse.data.floor,
+            floorsCount: verificationResponse.data.floors?.length || 0,
             roofCount: verificationResponse.data.Roof?.length || 0
           })
         }
@@ -1000,6 +1081,392 @@ export const useStrapi = () => {
     return permissions
   }
 
+  // Delete operations for individual elements
+  const deleteWindow = async (projectId: string, floorId: string, windowId: string): Promise<void> => {
+    const operation = `Delete Window (${windowId} from Floor ${floorId})`
+    console.log(`🗑️ ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Remove the window from the project data
+      const updatedProject = { ...project }
+      const floor = updatedProject.floors[floorId]
+      if (floor?.windows?.[windowId]) {
+        delete floor.windows[windowId]
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success`)
+      } else {
+        console.warn(`⚠️ ${operation} - Window not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId, windowId })
+      throw error
+    }
+  }
+
+  const deleteDoor = async (projectId: string, floorId: string, doorId: string): Promise<void> => {
+    const operation = `Delete Door (${doorId} from Floor ${floorId})`
+    console.log(`🗑️ ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Remove the door from the project data
+      const updatedProject = { ...project }
+      const floor = updatedProject.floors[floorId]
+      if (floor?.doors?.[doorId]) {
+        delete floor.doors[doorId]
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success`)
+      } else {
+        console.warn(`⚠️ ${operation} - Door not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId, doorId })
+      throw error
+    }
+  }
+
+  const deleteFloor = async (projectId: string, floorId: string): Promise<void> => {
+    const operation = `Delete Floor (${floorId})`
+    console.log(`🗑️ ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Remove the floor from the project data
+      const updatedProject = { ...project }
+      if (updatedProject.floors[floorId]) {
+        delete updatedProject.floors[floorId]
+        
+        // Update roof position to sit on top of remaining floors
+        if (updatedProject.roof && Object.keys(updatedProject.floors).length > 0) {
+          const remainingFloors = Object.values(updatedProject.floors)
+          const highestFloor = remainingFloors.reduce((max, floor) => 
+            Math.max(max, floor.heightPosition + floor.height), 0)
+          updatedProject.roof.heightPosition = highestFloor
+        }
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success`)
+      } else {
+        console.warn(`⚠️ ${operation} - Floor not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId })
+      throw error
+    }
+  }
+
+  const deleteRoof = async (projectId: string): Promise<void> => {
+    const operation = `Delete Roof`
+    console.log(`🗑️ ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Remove the roof from the project data
+      const updatedProject = { ...project }
+      updatedProject.roof = undefined
+      
+      // Save the updated project back to Strapi
+      await saveProject(updatedProject)
+      console.log(`✅ ${operation} - Success`)
+    } catch (error) {
+      logApiError(operation, error, { projectId })
+      throw error
+    }
+  }
+
+  // Duplicate operations for individual elements
+  const duplicateWindow = async (projectId: string, floorId: string, windowId: string): Promise<string> => {
+    const operation = `Duplicate Window (${windowId} on Floor ${floorId})`
+    console.log(`📋 ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Duplicate the window with a new ID
+      const updatedProject = { ...project }
+      const floor = updatedProject.floors[floorId]
+      if (floor?.windows?.[windowId]) {
+        const originalWindow = floor.windows[windowId]
+        
+        // Find next available window ID
+        const existingIds = Object.keys(floor.windows).map(k => parseInt(k)).filter(n => !isNaN(n))
+        const nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1
+        const newWindowId = String(nextId)
+        
+        // Create duplicate with slight position offset
+        floor.windows[newWindowId] = {
+          ...originalWindow,
+          position: {
+            ...originalWindow.position,
+            x: originalWindow.position.x + 50 // Offset by 50cm
+          }
+        }
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success, new ID: ${newWindowId}`)
+        return newWindowId
+      } else {
+        throw new Error(`Window ${windowId} not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId, windowId })
+      throw error
+    }
+  }
+
+  const duplicateDoor = async (projectId: string, floorId: string, doorId: string): Promise<string> => {
+    const operation = `Duplicate Door (${doorId} on Floor ${floorId})`
+    console.log(`📋 ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Duplicate the door with a new ID
+      const updatedProject = { ...project }
+      const floor = updatedProject.floors[floorId]
+      if (floor?.doors?.[doorId]) {
+        const originalDoor = floor.doors[doorId]
+        
+        // Find next available door ID
+        const existingIds = Object.keys(floor.doors).map(k => parseInt(k)).filter(n => !isNaN(n))
+        const nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1
+        const newDoorId = String(nextId)
+        
+        // Create duplicate with slight position offset
+        floor.doors[newDoorId] = {
+          ...originalDoor,
+          position: {
+            ...originalDoor.position,
+            x: originalDoor.position.x + 50 // Offset by 50cm
+          }
+        }
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success, new ID: ${newDoorId}`)
+        return newDoorId
+      } else {
+        throw new Error(`Door ${doorId} not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId, doorId })
+      throw error
+    }
+  }
+
+  const duplicateFloor = async (projectId: string, floorId: string): Promise<string> => {
+    const operation = `Duplicate Floor (${floorId})`
+    console.log(`📋 ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Duplicate the floor with a new ID
+      const updatedProject = { ...project }
+      const originalFloor = updatedProject.floors[floorId]
+      if (originalFloor) {
+        // Generate new floor ID and calculate height position
+        const existingStoreys = Object.values(updatedProject.floors).map((floor: any) => floor.storey)
+        const maxStorey = existingStoreys.length > 0 ? Math.max(...existingStoreys) : -1
+        const newFloorId = String(maxStorey + 1)
+        
+        // Calculate height position
+        let maxPosition = 0
+        for (const floor of Object.values(updatedProject.floors) as any[]) {
+          const topPosition = floor.heightPosition + floor.height
+          if (topPosition > maxPosition) {
+            maxPosition = topPosition
+          }
+        }
+        
+        // Create duplicated floor
+        const duplicatedFloor = {
+          ...originalFloor,
+          storey: parseInt(newFloorId),
+          heightPosition: maxPosition,
+          // Duplicate all windows and doors with new IDs
+          windows: Object.fromEntries(
+            Object.entries(originalFloor.windows || {}).map(([_, window], index) => [
+              String(index + 1), { ...window }
+            ])
+          ),
+          doors: Object.fromEntries(
+            Object.entries(originalFloor.doors || {}).map(([_, door], index) => [
+              String(index + 1), { ...door }
+            ])
+          )
+        }
+        
+        updatedProject.floors[newFloorId] = duplicatedFloor
+        
+        // Update roof position to sit on top of all floors
+        if (updatedProject.roof) {
+          const highestFloor = Object.values(updatedProject.floors).reduce((max: number, floor: any) => 
+            Math.max(max, floor.heightPosition + floor.height), 0)
+          updatedProject.roof.heightPosition = highestFloor
+        }
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success, new ID: ${newFloorId}`)
+        return newFloorId
+      } else {
+        throw new Error(`Floor ${floorId} not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId })
+      throw error
+    }
+  }
+
+  // Transform operations
+  const transformWindowToDoor = async (projectId: string, floorId: string, windowId: string): Promise<string> => {
+    const operation = `Transform Window to Door (${windowId} on Floor ${floorId})`
+    console.log(`🔄 ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Transform the window to a door
+      const updatedProject = { ...project }
+      const floor = updatedProject.floors[floorId]
+      if (floor?.windows?.[windowId]) {
+        const window = floor.windows[windowId]
+        
+        // Find next available door ID
+        const existingDoorIds = Object.keys(floor.doors || {}).map(k => parseInt(k)).filter(n => !isNaN(n))
+        const nextDoorId = existingDoorIds.length > 0 ? Math.max(...existingDoorIds) + 1 : 1
+        const newDoorId = String(nextDoorId)
+        
+        // Create door with window properties but door-appropriate dimensions
+        const newDoor = {
+          width: Math.max(window.width, 80), // Ensure minimum door width
+          height: Math.max(window.height, 200), // Ensure minimum door height
+          position: { ...window.position }
+        }
+        
+        // Remove window and add door
+        delete floor.windows[windowId]
+        if (!floor.doors) floor.doors = {}
+        floor.doors[newDoorId] = newDoor
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success, new door ID: ${newDoorId}`)
+        return newDoorId
+      } else {
+        throw new Error(`Window ${windowId} not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId, windowId })
+      throw error
+    }
+  }
+
+  const transformDoorToWindow = async (projectId: string, floorId: string, doorId: string): Promise<string> => {
+    const operation = `Transform Door to Window (${doorId} on Floor ${floorId})`
+    console.log(`🔄 ${operation} - Starting...`)
+    
+    try {
+      // Load the current project to get the building structure
+      const project = await loadProject(projectId)
+      
+      // Transform the door to a window
+      const updatedProject = { ...project }
+      const floor = updatedProject.floors[floorId]
+      if (floor?.doors?.[doorId]) {
+        const door = floor.doors[doorId]
+        
+        // Find next available window ID
+        const existingWindowIds = Object.keys(floor.windows || {}).map(k => parseInt(k)).filter(n => !isNaN(n))
+        const nextWindowId = existingWindowIds.length > 0 ? Math.max(...existingWindowIds) + 1 : 1
+        const newWindowId = String(nextWindowId)
+        
+        // Create window with door properties but window-appropriate dimensions
+        const newWindow = {
+          width: Math.min(door.width, 150), // Typical window width
+          height: Math.min(door.height, 150), // Typical window height
+          position: { ...door.position }
+        }
+        
+        // Remove door and add window
+        delete floor.doors[doorId]
+        if (!floor.windows) floor.windows = {}
+        floor.windows[newWindowId] = newWindow
+        
+        // Save the updated project back to Strapi
+        await saveProject(updatedProject)
+        console.log(`✅ ${operation} - Success, new window ID: ${newWindowId}`)
+        return newWindowId
+      } else {
+        throw new Error(`Door ${doorId} not found`)
+      }
+    } catch (error) {
+      logApiError(operation, error, { projectId, floorId, doorId })
+      throw error
+    }
+  }
+
+  // Get available roof type options from Strapi
+  const getRoofTypeOptions = () => {
+    // Based on the typeMap in convertRoofType function
+    // These are the roof types supported in Strapi
+    const strapiRoofTypes = [
+      'Gable',
+      'Hip', 
+      'Flat',
+      'Shed',
+      'Butterfly',
+      'Gambrel',
+      'Mansard',
+      'M Shaped',
+      'Pyramid'
+    ]
+    
+    // Convert Strapi roof types back to frontend format
+    const convertRoofType = (strapiType: string): Roof['type'] => {
+      const typeMap: Record<string, Roof['type']> = {
+        'Gable': 'gable',
+        'Hip': 'hip', 
+        'Flat': 'flat',
+        'Shed': 'shed',
+        'Butterfly': 'gable', // Map unsupported types to gable
+        'Gambrel': 'gable',
+        'Mansard': 'gable',
+        'M Shaped': 'gable',
+        'Pyramid': 'hip'
+      }
+      return typeMap[strapiType] || 'gable' // Default to gable
+    }
+    
+    // Return both display and value for dropdown
+    return strapiRoofTypes.map(type => ({
+      label: type,
+      value: type,
+      // Map to frontend type for comparison
+      frontendType: convertRoofType(type)
+    }))
+  }
+
   return {
     client,
     loadProject,
@@ -1007,6 +1474,21 @@ export const useStrapi = () => {
     saveProject,
     updateProject,
     createProject,
+    // Delete operations
+    deleteWindow,
+    deleteDoor,
+    deleteFloor,
+    deleteRoof,
+    // Duplicate operations
+    duplicateWindow,
+    duplicateDoor,
+    duplicateFloor,
+    // Transform operations
+    transformWindowToDoor,
+    transformDoorToWindow,
+    // Roof type options
+    getRoofTypeOptions,
+    // Utility exports
     transformProject, // Export for testing
     transformProjectToStrapi, // Export for testing
     testApiEndpoints, // Export for debugging

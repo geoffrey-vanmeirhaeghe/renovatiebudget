@@ -1,10 +1,12 @@
 <template>
   <ClientOnly>
-    <!-- Data Source Toggle (only visible when nothing is selected) -->
+    <!-- Main Control Panel (only visible when nothing is selected) -->
     <div v-if="!selectedObject" class="data-source-panel">
       <div class="panel-header">
-        <h3>🔧 Dev Tools</h3>
+        <h3>📐 Project Controls</h3>
       </div>
+      
+      <!-- Project Management -->
       <div class="property-section compact">
         <h4>Project</h4>
         <div class="property-group compact">
@@ -17,21 +19,6 @@
           >
         </div>
         <div class="compact-buttons">
-          <button 
-            @click="loadStrapiData" 
-            :class="{ active: dataSource === 'strapi' }"
-            class="compact-btn"
-            title="Load Strapi Data"
-          >
-            🌐
-          </button>
-          <button 
-            @click="quickAddFloor"
-            class="compact-btn"
-            title="Add Floor"
-          >
-            🏢
-          </button>
           <button 
             @click="saveCurrentProject" 
             :disabled="!canSave || isSaving"
@@ -47,6 +34,14 @@
           >
             ✨
           </button>
+          <button 
+            @click="loadStrapiData" 
+            :class="{ active: dataSource === 'strapi' }"
+            class="compact-btn"
+            title="Load from Strapi"
+          >
+            🌐
+          </button>
         </div>
         <div class="status-info" v-if="saveStatus">
           <small :class="{ error: saveStatus.includes('Error'), success: saveStatus.includes('Saved') }">
@@ -54,61 +49,28 @@
           </small>
         </div>
       </div>
-      
-      <div class="property-section compact">
-        <h4>Scenarios</h4>
-        <div class="compact-buttons">
-          <button 
-            @click="loadMockScenario(1)" 
-            :class="{ active: dataSource === 'mock' && mockScenario === 1 }"
-            class="compact-btn"
-            title="Single Floor"
-          >
-            🏠
-          </button>
-          <button 
-            @click="loadMockScenario(2)" 
-            :class="{ active: dataSource === 'mock' && mockScenario === 2 }"
-            class="compact-btn"
-            title="Two Floors"
-          >
-            🏢
-          </button>
-          <button 
-            @click="loadMockScenario(3)" 
-            :class="{ active: dataSource === 'mock' && mockScenario === 3 }"
-            class="compact-btn"
-            title="Attic House"
-          >
-            🏘️
-          </button>
-        </div>
-      </div>
 
+      <!-- Building Tools -->
       <div class="property-section compact">
-        <h4>Debug</h4>
+        <h4>Building Tools</h4>
         <div class="compact-buttons">
           <button 
-            @click="runApiTests" 
-            :disabled="isTestingApi"
+            @click="quickAddFloor"
             class="compact-btn"
-            :title="isTestingApi ? 'Testing...' : 'Test API Endpoints'"
+            title="Add Floor"
           >
-            {{ isTestingApi ? '⏳' : '🧪' }}
+            🏢 Add Floor
           </button>
           <button 
-            @click="runPermissionCheck" 
-            :disabled="isCheckingPermissions"
-            class="compact-btn"
-            :title="isCheckingPermissions ? 'Checking...' : 'Check Permissions'"
+            @click="showClearHouseConfirmation"
+            class="compact-btn clear-house-btn"
+            title="Clear entire house (remove all floors)"
           >
-            {{ isCheckingPermissions ? '⏳' : '🔐' }}
+            🧹 Clear House
           </button>
         </div>
-        <div class="debug-info" v-if="debugResults">
-          <small>{{ debugResults }}</small>
-        </div>
       </div>
+      
     </div>
 
     <div v-if="selectedObject" class="property-panel">
@@ -248,8 +210,63 @@
     </div>
 
 
+    <!-- Element Actions (when any element is selected) -->
+    <div v-if="selectedObject" class="property-section">
+      <h4>Actions</h4>
+      <div class="action-buttons">
+        <!-- Delete button for all elements except roof -->
+        <button 
+          v-if="selectedObject.type !== 'roof'"
+          @click="deleteSelectedElement"
+          class="action-btn delete-btn"
+          title="Delete this element"
+        >
+          🗑️ Delete
+        </button>
+        
+        <!-- Duplicate button for all elements except roof -->
+        <button 
+          v-if="selectedObject.type !== 'roof'"
+          @click="duplicateSelectedElement"
+          class="action-btn duplicate-btn"
+          title="Duplicate this element"
+        >
+          📋 Duplicate
+        </button>
+        
+        <!-- Convert buttons for windows and doors -->
+        <button 
+          v-if="selectedObject.type === 'window'"
+          @click="transformToDoor"
+          class="action-btn transform-btn"
+          title="Convert to door"
+        >
+          🚪 Convert to Door
+        </button>
+        
+        <button 
+          v-if="selectedObject.type === 'door'"
+          @click="transformToWindow"
+          class="action-btn transform-btn"
+          title="Convert to window"
+        >
+          🪟 Convert to Window
+        </button>
+        
+        <!-- Clear floor button when floor is selected -->
+        <button 
+          v-if="selectedObject.type === 'floor'"
+          @click="showClearFloorConfirmation"
+          class="action-btn clear-btn"
+          title="Remove all windows and doors from this floor"
+        >
+          🧹 Clear Floor
+        </button>
+      </div>
+    </div>
+
     <!-- Element Creation (when floor is selected) -->
-    <div v-if="selectedObject.type === 'floor'" class="property-section">
+    <div v-if="selectedObject?.type === 'floor'" class="property-section">
       <h4>Add Elements</h4>
       <div class="add-buttons">
         <button 
@@ -310,6 +327,29 @@
           ></button>
         </div>
       </div>
+      
+      <!-- Floor Movement Controls -->
+      <div class="property-group">
+        <label>Floor Level:</label>
+        <div class="floor-movement-controls">
+          <button 
+            @click="moveFloorUp"
+            :disabled="!canMoveFloorUp"
+            class="action-btn floor-move-btn"
+            title="Move floor up"
+          >
+            ⬆️ Move Up
+          </button>
+          <button 
+            @click="moveFloorDown"
+            :disabled="!canMoveFloorDown"
+            class="action-btn floor-move-btn"
+            title="Move floor down"
+          >
+            ⬇️ Move Down
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Floor Position -->
@@ -359,6 +399,27 @@
           class="number-input"
         >
         <span class="unit">{{ getDisplayUnit() }}</span>
+      </div>
+    </div>
+
+    <!-- Roof Type -->
+    <div v-if="selectedObject.type === 'roof'" class="property-section">
+      <h4>Roof Type</h4>
+      <div class="property-group">
+        <label>Type:</label>
+        <select 
+          :value="getCurrentRoofStrapiType"
+          @change="updateRoofType($event.target.value)"
+          class="roof-type-select"
+        >
+          <option 
+            v-for="option in roofTypeOptions" 
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
       </div>
     </div>
 
@@ -462,10 +523,64 @@
       </div>
     </div>
     </div>
+
+    <!-- Confirmation Modals -->
+    <Teleport to="body">
+      <!-- Clear Floor Confirmation Modal -->
+      <div v-if="showClearFloorModal" class="modal-overlay" @click="showClearFloorModal = false">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3>Clear Floor</h3>
+            <button @click="showClearFloorModal = false" class="modal-close">×</button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to clear all windows and doors from this floor?</p>
+            <p class="modal-warning">This action cannot be undone.</p>
+          </div>
+          <div class="modal-footer">
+            <button @click="showClearFloorModal = false" class="modal-btn cancel">Cancel</button>
+            <button @click="clearFloor" class="modal-btn danger">Clear Floor</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clear House Confirmation Modal -->
+      <div v-if="showClearHouseModal" class="modal-overlay" @click="showClearHouseModal = false">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3>Clear Entire House</h3>
+            <button @click="showClearHouseModal = false" class="modal-close">×</button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to clear the entire house?</p>
+            <p>This will remove all floors except the ground floor, and clear all windows and doors.</p>
+            <p class="modal-warning">This action cannot be undone.</p>
+          </div>
+          <div class="modal-footer">
+            <button @click="showClearHouseModal = false" class="modal-btn cancel">Cancel</button>
+            <button @click="clearHouse" class="modal-btn danger">Clear House</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </ClientOnly>
 </template>
 
 <script setup lang="ts">
+/**
+ * PropertyPanel Component - Main UI for 3D House Editor
+ * 
+ * DEBUG FUNCTIONALITY ACCESS:
+ * All debug and testing functions are still available in this component but hidden from the UI.
+ * You can access them by calling these functions directly in the browser console:
+ * 
+ * - loadMockScenario(1|2|3) - Load different mock project scenarios
+ * - runApiTests() - Test Strapi API endpoints
+ * - runPermissionCheck() - Check API permissions
+ * - loadStrapiData() - Load from Strapi backend
+ * 
+ * The functions remain in the code for easy debugging and development.
+ */
 import type { SelectedObject } from '~/composables/useSelection'
 import { DIMENSION_RANGES, SIZE_PRESETS } from '~/constants/building-standards'
 
@@ -473,7 +588,7 @@ const { selectedObject, clearSelection } = useSelection()
 const { updateProject, currentProject, loadProject } = useProject()
 const { getDisplayUnit, formatValue, convertToDisplay, convertFromDisplay } = useBuildingStandards()
 const { quickCreateElement, startCreating } = useElementCreation()
-const { saveProject, createProject, updateProject: updateStrapiProject, testApiEndpoints, checkPermissions } = useStrapi()
+const { saveProject, createProject, updateProject: updateStrapiProject, testApiEndpoints, checkPermissions, getRoofTypeOptions } = useStrapi()
 
 // Computed properties for current object values (always fresh from project data)
 const currentObject = computed(() => {
@@ -682,6 +797,262 @@ const updateProjectTitle = () => {
   updatedProject.name = projectTitle.value.trim()
   
   updateProject(updatedProject)
+}
+
+// Confirmation modals state
+const showClearFloorModal = ref(false)
+const showClearHouseModal = ref(false)
+
+// Show confirmation modals
+const showClearFloorConfirmation = () => {
+  showClearFloorModal.value = true
+}
+
+const showClearHouseConfirmation = () => {
+  showClearHouseModal.value = true
+}
+
+// Delete selected element
+const deleteSelectedElement = () => {
+  if (!selectedObject.value || !currentProject.value) return
+  
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  const { type, id, floorId } = selectedObject.value
+  
+  if (type === 'floor') {
+    // Delete entire floor
+    delete updatedProject.floors[id]
+    
+    // Update roof position to sit on top of remaining floors
+    updateRoofPosition(updatedProject)
+  } else if (type === 'window' && floorId) {
+    // Delete window from specific floor
+    const floor = updatedProject.floors[floorId]
+    if (floor?.windows) {
+      delete floor.windows[id]
+    }
+  } else if (type === 'door' && floorId) {
+    // Delete door from specific floor
+    const floor = updatedProject.floors[floorId]
+    if (floor?.doors) {
+      delete floor.doors[id]
+    }
+  } else if (type === 'roof') {
+    // Delete roof (set to undefined)
+    updatedProject.roof = undefined
+  }
+  
+  // Clear selection and update project
+  clearSelection()
+  updateProject(updatedProject)
+}
+
+// Duplicate selected element
+const duplicateSelectedElement = () => {
+  if (!selectedObject.value || !currentProject.value) return
+  
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  const { type, id, floorId } = selectedObject.value
+  
+  if (type === 'floor') {
+    // Duplicate entire floor
+    const originalFloor = updatedProject.floors[id]
+    const newFloorId = generateFloorId(updatedProject.floors)
+    const heightPosition = calculateFloorHeightPosition(updatedProject.floors)
+    
+    const duplicatedFloor = {
+      ...originalFloor,
+      storey: parseInt(newFloorId),
+      heightPosition: heightPosition,
+      // Duplicate all windows and doors with new IDs
+      windows: Object.fromEntries(
+        Object.entries(originalFloor.windows || {}).map(([_, window], index) => [
+          String(index + 1), { ...window }
+        ])
+      ),
+      doors: Object.fromEntries(
+        Object.entries(originalFloor.doors || {}).map(([_, door], index) => [
+          String(index + 1), { ...door }
+        ])
+      )
+    }
+    
+    updatedProject.floors[newFloorId] = duplicatedFloor
+    updateRoofPosition(updatedProject)
+    
+    // Select the new floor
+    const { selectObject } = useSelection()
+    nextTick(() => {
+      selectObject({ type: 'floor', id: newFloorId, object: duplicatedFloor })
+    })
+  } else if ((type === 'window' || type === 'door') && floorId) {
+    // Duplicate window or door on the same floor
+    const floor = updatedProject.floors[floorId]
+    const elements = type === 'window' ? floor?.windows : floor?.doors
+    
+    if (elements && elements[id]) {
+      const originalElement = elements[id]
+      
+      // Find next available ID
+      const existingIds = Object.keys(elements).map(k => parseInt(k)).filter(n => !isNaN(n))
+      const nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1
+      
+      // Create duplicate with slight position offset
+      const duplicatedElement = {
+        ...originalElement,
+        position: {
+          ...originalElement.position,
+          x: originalElement.position.x + 50 // Offset by 50cm
+        }
+      }
+      
+      elements[String(nextId)] = duplicatedElement
+      
+      // Select the new element
+      const { selectObject } = useSelection()
+      nextTick(() => {
+        selectObject({ type, id: String(nextId), object: duplicatedElement, floorId })
+      })
+    }
+  } else if (type === 'roof') {
+    // For roof, we can't really duplicate, but we could create a copy with offset
+    // For now, just show a message
+    saveStatus.value = 'ℹ️ Roof duplication not implemented - only one roof per building'
+    setTimeout(() => { saveStatus.value = '' }, 3000)
+    return
+  }
+  
+  updateProject(updatedProject)
+}
+
+// Transform window to door
+const transformToDoor = () => {
+  if (!selectedObject.value || selectedObject.value.type !== 'window' || !currentProject.value) return
+  
+  const { id, floorId } = selectedObject.value
+  if (!floorId) return
+  
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  const floor = updatedProject.floors[floorId]
+  
+  if (floor?.windows?.[id]) {
+    const window = floor.windows[id]
+    
+    // Find next available door ID
+    const existingDoorIds = Object.keys(floor.doors || {}).map(k => parseInt(k)).filter(n => !isNaN(n))
+    const nextDoorId = existingDoorIds.length > 0 ? Math.max(...existingDoorIds) + 1 : 1
+    
+    // Create door with exact window dimensions (no resizing)
+    const newDoor = {
+      width: window.width, // Preserve original width
+      height: window.height, // Preserve original height
+      position: { ...window.position }
+    }
+    
+    // Remove window and add door
+    delete floor.windows[id]
+    if (!floor.doors) floor.doors = {}
+    floor.doors[String(nextDoorId)] = newDoor
+    
+    // Select the new door
+    const { selectObject } = useSelection()
+    nextTick(() => {
+      selectObject({ type: 'door', id: String(nextDoorId), object: newDoor, floorId })
+    })
+    
+    updateProject(updatedProject)
+  }
+}
+
+// Transform door to window
+const transformToWindow = () => {
+  if (!selectedObject.value || selectedObject.value.type !== 'door' || !currentProject.value) return
+  
+  const { id, floorId } = selectedObject.value
+  if (!floorId) return
+  
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  const floor = updatedProject.floors[floorId]
+  
+  if (floor?.doors?.[id]) {
+    const door = floor.doors[id]
+    
+    // Find next available window ID
+    const existingWindowIds = Object.keys(floor.windows || {}).map(k => parseInt(k)).filter(n => !isNaN(n))
+    const nextWindowId = existingWindowIds.length > 0 ? Math.max(...existingWindowIds) + 1 : 1
+    
+    // Create window with exact door dimensions (no resizing)
+    const newWindow = {
+      width: door.width, // Preserve original width
+      height: door.height, // Preserve original height
+      position: { ...door.position }
+    }
+    
+    // Remove door and add window
+    delete floor.doors[id]
+    if (!floor.windows) floor.windows = {}
+    floor.windows[String(nextWindowId)] = newWindow
+    
+    // Select the new window
+    const { selectObject } = useSelection()
+    nextTick(() => {
+      selectObject({ type: 'window', id: String(nextWindowId), object: newWindow, floorId })
+    })
+    
+    updateProject(updatedProject)
+  }
+}
+
+// Clear all elements from selected floor
+const clearFloor = () => {
+  if (!selectedObject.value || selectedObject.value.type !== 'floor' || !currentProject.value) return
+  
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  const floor = updatedProject.floors[selectedObject.value.id]
+  
+  if (floor) {
+    // Clear all windows and doors
+    floor.windows = {}
+    floor.doors = {}
+    
+    updateProject(updatedProject)
+    saveStatus.value = '✅ Floor cleared successfully'
+    setTimeout(() => { saveStatus.value = '' }, 3000)
+  }
+  
+  showClearFloorModal.value = false
+}
+
+// Clear entire house (remove all floors)
+const clearHouse = () => {
+  if (!currentProject.value) return
+  
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Keep only one ground floor with default settings
+  updatedProject.floors = {
+    '0': {
+      storey: 0,
+      height: 250,
+      heightPosition: 0,
+      color: '#f8f9fa',
+      windows: {},
+      doors: {}
+    }
+  }
+  
+  // Reset roof position
+  if (updatedProject.roof) {
+    updatedProject.roof.heightPosition = 250
+  }
+  
+  clearSelection()
+  updateProject(updatedProject)
+  
+  saveStatus.value = '✅ House cleared - reset to ground floor only'
+  setTimeout(() => { saveStatus.value = '' }, 3000)
+  
+  showClearHouseModal.value = false
 }
 
 const getScenarioDescription = () => {
@@ -1147,6 +1518,137 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
   
   updateProject(updatedProject)
 }
+
+// Roof type management
+const roofTypeOptions = computed(() => getRoofTypeOptions())
+
+// Get the current Strapi roof type for display (convert from frontend type back to Strapi type)
+const getCurrentRoofStrapiType = computed(() => {
+  if (!currentObject.value?.type) return 'Gable' // Default
+  
+  // Find the Strapi type that maps to our current frontend type
+  const option = roofTypeOptions.value.find(opt => opt.frontendType === currentObject.value.type)
+  return option?.value || 'Gable'
+})
+
+const updateRoofType = (strapiType: string) => {
+  if (!selectedObject.value || !currentProject.value || selectedObject.value.type !== 'roof') return
+  
+  // Find the corresponding frontend type
+  const option = roofTypeOptions.value.find(opt => opt.value === strapiType)
+  if (!option) return
+  
+  // Create a deep copy to trigger reactivity
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Update the roof type (using frontend type)
+  if (updatedProject.roof) {
+    updatedProject.roof.type = option.frontendType
+  }
+  
+  updateProject(updatedProject)
+}
+
+// Floor movement functions
+const canMoveFloorUp = computed(() => {
+  if (!selectedObject.value || selectedObject.value.type !== 'floor' || !currentProject.value) return false
+  
+  const currentFloor = currentProject.value.floors[selectedObject.value.id]
+  if (!currentFloor) return false
+  
+  // Check if there's a floor above this one
+  const floors = Object.values(currentProject.value.floors)
+  const floorsAbove = floors.filter(f => f.storey > currentFloor.storey)
+  return floorsAbove.length > 0
+})
+
+const canMoveFloorDown = computed(() => {
+  if (!selectedObject.value || selectedObject.value.type !== 'floor' || !currentProject.value) return false
+  
+  const currentFloor = currentProject.value.floors[selectedObject.value.id]
+  if (!currentFloor) return false
+  
+  // Check if there's a floor below this one
+  const floors = Object.values(currentProject.value.floors)
+  const floorsBelow = floors.filter(f => f.storey < currentFloor.storey)
+  return floorsBelow.length > 0
+})
+
+const moveFloorUp = () => {
+  if (!selectedObject.value || selectedObject.value.type !== 'floor' || !currentProject.value) return
+  
+  const currentFloorId = selectedObject.value.id
+  const currentFloor = currentProject.value.floors[currentFloorId]
+  if (!currentFloor) return
+  
+  // Find the floor directly above (next higher storey)
+  const floors = Object.entries(currentProject.value.floors)
+  const floorsAbove = floors.filter(([_, floor]) => floor.storey > currentFloor.storey)
+  if (floorsAbove.length === 0) return
+  
+  // Sort by storey and get the closest one above
+  floorsAbove.sort(([_, a], [__, b]) => a.storey - b.storey)
+  const [targetFloorId, targetFloor] = floorsAbove[0]
+  
+  // Swap the storey numbers and height positions
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  const currentStorey = updatedProject.floors[currentFloorId].storey
+  const targetStorey = updatedProject.floors[targetFloorId].storey
+  const currentHeight = updatedProject.floors[currentFloorId].heightPosition
+  const targetHeight = updatedProject.floors[targetFloorId].heightPosition
+  
+  // Swap storey numbers
+  updatedProject.floors[currentFloorId].storey = targetStorey
+  updatedProject.floors[targetFloorId].storey = currentStorey
+  
+  // Swap height positions
+  updatedProject.floors[currentFloorId].heightPosition = targetHeight
+  updatedProject.floors[targetFloorId].heightPosition = currentHeight
+  
+  // Update roof position
+  updateRoofPosition(updatedProject)
+  
+  updateProject(updatedProject)
+  saveStatus.value = '✅ Floor moved up'
+}
+
+const moveFloorDown = () => {
+  if (!selectedObject.value || selectedObject.value.type !== 'floor' || !currentProject.value) return
+  
+  const currentFloorId = selectedObject.value.id
+  const currentFloor = currentProject.value.floors[currentFloorId]
+  if (!currentFloor) return
+  
+  // Find the floor directly below (next lower storey)
+  const floors = Object.entries(currentProject.value.floors)
+  const floorsBelow = floors.filter(([_, floor]) => floor.storey < currentFloor.storey)
+  if (floorsBelow.length === 0) return
+  
+  // Sort by storey and get the closest one below
+  floorsBelow.sort(([_, a], [__, b]) => b.storey - a.storey)
+  const [targetFloorId, targetFloor] = floorsBelow[0]
+  
+  // Swap the storey numbers and height positions
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  const currentStorey = updatedProject.floors[currentFloorId].storey
+  const targetStorey = updatedProject.floors[targetFloorId].storey
+  const currentHeight = updatedProject.floors[currentFloorId].heightPosition
+  const targetHeight = updatedProject.floors[targetFloorId].heightPosition
+  
+  // Swap storey numbers
+  updatedProject.floors[currentFloorId].storey = targetStorey
+  updatedProject.floors[targetFloorId].storey = currentStorey
+  
+  // Swap height positions
+  updatedProject.floors[currentFloorId].heightPosition = targetHeight
+  updatedProject.floors[targetFloorId].heightPosition = currentHeight
+  
+  // Update roof position
+  updateRoofPosition(updatedProject)
+  
+  updateProject(updatedProject)
+  saveStatus.value = '✅ Floor moved down'
+}
 </script>
 
 <style scoped>
@@ -1548,6 +2050,33 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
   color: #ef4444;
 }
 
+/* Floor Movement Controls */
+.floor-movement-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.floor-move-btn {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: #f8faff;
+  border: 1px solid #e5e7eb;
+}
+
+.floor-move-btn:hover:not(:disabled) {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.floor-move-btn:disabled {
+  opacity: 0.4;
+  background: #f9fafb;
+  color: #9ca3af;
+}
+
 /* Debug Tools Styling */
 .debug-controls {
   display: flex;
@@ -1754,5 +2283,286 @@ const applyPreset = (preset: { name: string, width: number, height: number }) =>
 .compact-btn:disabled:hover::after,
 .compact-btn:disabled:hover::before {
   display: none;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.action-btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.delete-btn {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.delete-btn:hover {
+  background: #dc3545;
+  color: white;
+}
+
+.duplicate-btn {
+  color: #6f42c1;
+  border-color: #6f42c1;
+}
+
+.duplicate-btn:hover {
+  background: #6f42c1;
+  color: white;
+}
+
+.transform-btn {
+  color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.transform-btn:hover {
+  background: #0d6efd;
+  color: white;
+}
+
+.clear-btn {
+  color: #fd7e14;
+  border-color: #fd7e14;
+}
+
+.clear-btn:hover {
+  background: #fd7e14;
+  color: white;
+}
+
+.clear-house-btn {
+  color: #dc3545;
+}
+
+.clear-house-btn:hover {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: modal-appear 0.2s ease-out;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #e9ecef;
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+  line-height: 1.5;
+}
+
+.modal-body p {
+  margin: 0 0 12px 0;
+  color: #555;
+}
+
+.modal-body p:last-child {
+  margin-bottom: 0;
+}
+
+.modal-warning {
+  color: #dc3545 !important;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+.modal-btn {
+  padding: 10px 20px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  min-width: 80px;
+}
+
+.modal-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.modal-btn.cancel {
+  color: #6c757d;
+  border-color: #6c757d;
+}
+
+.modal-btn.cancel:hover {
+  background: #6c757d;
+  color: white;
+}
+
+.modal-btn.danger {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.modal-btn.danger:hover {
+  background: #dc3545;
+  color: white;
+}
+
+/* Advanced Tools Section */
+.advanced-section details {
+  margin-top: 8px;
+}
+
+.advanced-toggle {
+  cursor: pointer;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  user-select: none;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 12px;
+  transition: color 0.2s;
+}
+
+.advanced-toggle:hover {
+  color: #333;
+}
+
+.advanced-content {
+  animation: slide-down 0.2s ease-out;
+}
+
+.advanced-content h5 {
+  margin: 12px 0 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.advanced-content h5:first-child {
+  margin-top: 0;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Roof info styles */
+.roof-info {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.roof-info small {
+  color: #888;
+  font-size: 11px;
+  font-style: italic;
 }
 </style>
