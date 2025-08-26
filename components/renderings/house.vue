@@ -46,8 +46,8 @@
             -(floor.positionX || 0) / 100,
             ]"
             @click="selectFloor(index, floor)"
-            @mouseenter="hoverFloor(index, floor)"
-            @mouseleave="clearHover"
+            @pointer-enter="hoverFloor(index, floor)"
+            @pointer-leave="clearHover"
         >
             <TresMeshToonMaterial 
                 :color="getFloorColor(index, floor).value"
@@ -60,8 +60,8 @@
             :args="calculateObjectSize(door)"
             :position="calculateObjectPosition(door, floor)"
             @click="selectDoor(doorId, door, index)"
-            @mouseenter="hoverDoor(doorId, door, index)"
-            @mouseleave="clearHover"
+            @pointer-enter="hoverDoor(doorId, door, index)"
+            @pointer-leave="clearHover"
         >
             <TresMeshToonMaterial 
                 :color="getDoorColor(doorId, index).value"
@@ -74,8 +74,8 @@
             :args="calculateObjectSize(window)"
             :position="calculateObjectPosition(window, floor)"
             @click="selectWindow(windowId, window, index)"
-            @mouseenter="hoverWindow(windowId, window, index)"
-            @mouseleave="clearHover"
+            @pointer-enter="hoverWindow(windowId, window, index)"
+            @pointer-leave="clearHover"
         >
             <TresMeshToonMaterial 
                 :color="getWindowColor(windowId, index).value"
@@ -98,8 +98,8 @@
                 ]"
                 :position="[0, project.roof.height / 200, 0]"
                 @click="selectRoof"
-                @mouseenter="hoverRoof(project.roof)"
-                @mouseleave="clearHover"
+                @pointer-enter="hoverRoof(project.roof)"
+                @pointer-leave="clearHover"
             >
                 <TresMeshBasicMaterial :transparent="true" :opacity="0" />
             </Box>

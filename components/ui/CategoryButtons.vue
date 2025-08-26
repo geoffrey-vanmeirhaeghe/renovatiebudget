@@ -29,7 +29,7 @@ interface ToolCategory {
   tools: ToolItem[]
 }
 
-const selectedCategory = ref<string | null>(null)
+const selectedCategory = ref<string | null>('layout') // Default to layout category
 
 // Define the main tool categories (from ToolDock)
 const categories: ToolCategory[] = [
@@ -133,6 +133,15 @@ const selectCategory = (categoryId: string) => {
     }
   }
 }
+
+// Emit initial category on mount
+onMounted(() => {
+  // Emit the default layout category
+  const layoutCategory = categories.find(c => c.id === 'layout')
+  if (layoutCategory && layoutCategory.tools) {
+    emit('categorySelected', 'layout', layoutCategory.tools)
+  }
+})
 
 // Expose categories for parent components
 defineExpose({

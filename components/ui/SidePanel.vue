@@ -319,7 +319,32 @@
       </div>
     </div>
 
-    <!-- When a category is selected but no element or specific tool -->
+    <!-- Loading state -->
+    <div v-else-if="isProjectLoading" class="loading-panel">
+      <div class="panel-header">
+        <h3>Loading...</h3>
+      </div>
+      
+      <div class="loading-content">
+        <div class="loading-spinner">⟳</div>
+        <p>Loading project data...</p>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div v-else-if="hasProjectError" class="error-panel">
+      <div class="panel-header">
+        <h3>Connection Error</h3>
+      </div>
+      
+      <div class="error-content">
+        <div class="error-icon">⚠️</div>
+        <p>Unable to connect to Strapi. Using local data.</p>
+        <small>The panel will appear once data is loaded.</small>
+      </div>
+    </div>
+
+    <!-- Default state - show category tools if available, otherwise quick tools -->
     <div v-else-if="selectedCategory && categoryTools" class="category-tools-panel">
       <div class="panel-header">
         <h3>{{ categoryName || 'Tools' }}</h3>
@@ -347,65 +372,53 @@
         </small>
       </div>
     </div>
-
-    <!-- When a tool category/sub-tool is selected but no element -->
-    <div v-else-if="selectedTool" class="tool-context-panel">
-      <div class="panel-header">
-        <h3>{{ selectedTool.name }}</h3>
-        <button @click="clearToolSelection" class="close-btn">×</button>
-      </div>
-      
-      <div class="tool-instructions">
-        <p>{{ getToolInstructions(selectedTool) }}</p>
-      </div>
-    </div>
-
-    <!-- Loading state -->
-    <div v-else-if="isProjectLoading" class="loading-panel">
-      <div class="panel-header">
-        <h3>Loading...</h3>
-      </div>
-      
-      <div class="loading-content">
-        <div class="loading-spinner">⟳</div>
-        <p>Loading project data...</p>
-      </div>
-    </div>
-
-    <!-- Error state -->
-    <div v-else-if="hasProjectError" class="error-panel">
-      <div class="panel-header">
-        <h3>Connection Error</h3>
-      </div>
-      
-      <div class="error-content">
-        <div class="error-icon">⚠️</div>
-        <p>Unable to connect to Strapi. Using local data.</p>
-        <small>The panel will appear once data is loaded.</small>
-      </div>
-    </div>
-
-    <!-- Default state - no selection -->
+    
+    <!-- Default state - no category selection -->
     <div v-else class="default-panel">
       <div class="panel-header">
-        <h3>Getting Started</h3>
+        <h3>Quick Tools</h3>
       </div>
       
-      <div class="welcome-content">
-        <div class="welcome-section">
-          <h4>🏗️ Build Your House</h4>
-          <p>Select tools from the left panel to add floors, windows, doors, and more.</p>
+      <div class="quick-tools">
+        <!-- Main action buttons -->
+        <div class="tool-section">
+          <h4>Structure</h4>
+          <div class="tools-row">
+            <button @click="executeQuickTool('addFloor')" class="quick-tool-btn" title="Add Floor">
+              <span class="tool-icon">🏢</span>
+              <span class="tool-name">Add Floor</span>
+            </button>
+            <button @click="executeQuickTool('addWindow')" class="quick-tool-btn" title="Add Window">
+              <span class="tool-icon">🪟</span>
+              <span class="tool-name">Add Window</span>
+            </button>
+            <button @click="executeQuickTool('addDoor')" class="quick-tool-btn" title="Add Door">
+              <span class="tool-icon">🚪</span>
+              <span class="tool-name">Add Door</span>
+            </button>
+          </div>
         </div>
-        
-        <div class="welcome-section">
-          <h4>🎯 Edit Elements</h4>
-          <p>Click on any element in the 3D view to select and modify its properties.</p>
+
+        <!-- Secondary tools -->
+        <div class="tool-section">
+          <h4>Edit</h4>
+          <div class="tools-row">
+            <button @click="executeQuickTool('editWalls')" class="quick-tool-btn" title="Edit Walls">
+              <span class="tool-icon">🧱</span>
+              <span class="tool-name">Edit Walls</span>
+            </button>
+            <button @click="executeQuickTool('roomConfig')" class="quick-tool-btn" title="Room Config">
+              <span class="tool-icon">📐</span>
+              <span class="tool-name">Rooms</span>
+            </button>
+          </div>
         </div>
-        
-        <div class="welcome-section">
-          <h4>💾 Save Your Work</h4>
-          <p>Use the top menu to save your project or create a new one.</p>
-        </div>
+      </div>
+      
+      <div class="panel-footer">
+        <small class="instruction-text">
+          Or select categories above for more tools
+        </small>
       </div>
     </div>
   </div>
@@ -551,18 +564,6 @@ const getOrientationDescription = () => {
   }
 }
 
-const getToolInstructions = (tool: ToolItem) => {
-  switch (tool.action) {
-    case 'addFloor':
-      return 'Click anywhere in the 3D view or use the tool again to add a new floor above existing ones.'
-    case 'addWindow':
-      return 'Click on a floor to select it, then the window will be added to the front wall. You can move it afterwards.'
-    case 'addDoor':
-      return 'Click on a floor to select it, then the door will be added to the front wall. You can move it afterwards.'
-    default:
-      return `Selected tool: ${tool.name}. Implementation coming soon.`
-  }
-}
 
 const clearToolSelection = () => {
   emit('clearToolSelection')
@@ -600,6 +601,26 @@ const executeTool = (tool: ToolItem) => {
       // For future categories (Energy, Insulation, etc.)
       showNotImplemented(tool.name)
   }
+}
+
+// Quick tool execution from default panel
+const executeQuickTool = (action: string) => {
+  const toolNames = {
+    'addFloor': 'Add Floor',
+    'addWindow': 'Add Window', 
+    'addDoor': 'Add Door',
+    'editWalls': 'Edit Walls',
+    'roomConfig': 'Room Configuration'
+  }
+  
+  const mockTool: ToolItem = {
+    id: action,
+    name: toolNames[action as keyof typeof toolNames] || action,
+    icon: '',
+    action: action
+  }
+  
+  executeTool(mockTool)
 }
 
 const addFloor = () => {
@@ -1254,19 +1275,8 @@ const updateRoofHorizontalPosition = (position: 'positionX' | 'positionZ', value
   line-height: 1.3;
 }
 
-.tool-context-panel,
 .default-panel {
   padding: 0;
-}
-
-.tool-instructions {
-  padding: 20px;
-}
-
-.tool-instructions p {
-  margin: 0;
-  color: #4b5563;
-  line-height: 1.5;
 }
 
 .welcome-content {
@@ -1478,6 +1488,69 @@ const updateRoofHorizontalPosition = (position: 'positionX' | 'positionZ', value
   .tool-name {
     font-size: 11px;
   }
+}
+
+/* Quick Tools Styles */
+.quick-tools {
+  padding: 16px 20px;
+}
+
+.tool-section {
+  margin-bottom: 16px;
+}
+
+.tool-section:last-child {
+  margin-bottom: 0;
+}
+
+.tool-section h4 {
+  margin: 0 0 8px 0;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tools-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.quick-tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  min-height: 60px;
+}
+
+.quick-tool-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.quick-tool-btn .tool-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.quick-tool-btn .tool-name {
+  font-size: 10px;
+  font-weight: 500;
+  color: #374151;
+  text-align: center;
+  line-height: 1.2;
 }
 
 @media (max-width: 480px) {

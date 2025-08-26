@@ -2,12 +2,19 @@
   <div class="builder-container">
     <!-- 3D Builder View -->
     <div class="builder-view">
-      <!-- Floating Menu Button -->
-      <TopMenu />
-      <!-- Top Category Buttons -->
+      <!-- Simple Menu (top-left) -->
+      <SimpleMenu />
+      
+      <!-- Category Navigation (top-right) -->
       <CategoryButtons 
         @category-selected="onCategorySelected"
         @category-deselected="onCategoryDeselected"
+      />
+      
+      <!-- Tool Tooltip (shows instructions for selected tool) -->
+      <ToolTooltip 
+        :selected-tool="selectedTool"
+        @clear-tool="clearToolSelection"
       />
       
       <!-- Main 3D Visualization -->
@@ -35,11 +42,12 @@
 </template>
 
 <script setup lang="ts">
-import TopMenu from '~/components/ui/TopMenu.vue'
+import SimpleMenu from '~/components/ui/SimpleMenu.vue'
 import CategoryButtons from '~/components/ui/CategoryButtons.vue'
 import SidePanel from '~/components/ui/SidePanel.vue'
 import PropertyPanelActions from '~/components/ui/PropertyPanelActions.vue'
 import House from '~/components/renderings/house.vue'
+import ToolTooltip from '~/components/ui/ToolTooltip.vue'
 
 // Protect this page with authentication
 definePageMeta({
@@ -59,14 +67,9 @@ const { currentUser, getUserRegion, logout } = useAuth()
 // Get project data
 const { currentProject, loadProject } = useProject()
 
-// Navigation
-const goBackToDashboard = () => {
-  navigateTo('/dashboard')
-}
-
 // Tool and category management for 3D mode
-const selectedCategory = ref<string | null>(null)
-const selectedCategoryName = ref('')
+const selectedCategory = ref<string | null>('layout') // Default to layout category
+const selectedCategoryName = ref('Layout & Structure')
 const selectedCategoryTools = ref<ToolItem[]>([])
 const selectedTool = ref<ToolItem | null>(null)
 const actionsHandler = ref()
@@ -156,6 +159,17 @@ onMounted(async () => {
     const { loadProject } = useProject()
     await loadProject()
   }
+  
+  // Set layout category as active by default
+  const layoutTools: ToolItem[] = [
+    { id: 'add-floor', name: 'Add Floor', icon: '🏢', action: 'addFloor' },
+    { id: 'add-window', name: 'Add Window', icon: '🪟', action: 'addWindow' },
+    { id: 'add-door', name: 'Add Door', icon: '🚪', action: 'addDoor' },
+    { id: 'edit-walls', name: 'Edit Walls', icon: '🧱', action: 'editWalls' },
+    { id: 'room-config', name: 'Room Configuration', icon: '📐', action: 'roomConfig' },
+    { id: 'clear-house', name: 'Clear House', icon: '🧹', action: 'clearHouse' }
+  ]
+  selectedCategoryTools.value = layoutTools
 })
 </script>
 
@@ -181,7 +195,7 @@ onMounted(async () => {
   flex: 1;
   position: relative;
   overflow: hidden;
-  padding-top: 20px;
+  padding-top: 80px; /* Account for combined navigation height */
   padding-bottom: 400px;
   padding-left: 60px;
 }
@@ -197,7 +211,7 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .visualization-area {
     padding-bottom: 350px;
-    padding-top: 15px;
+    padding-top: 90px; /* Account for navigation on mobile */
     padding-left: 50px;
   }
 }
@@ -205,7 +219,7 @@ onMounted(async () => {
 @media (max-width: 480px) {
   .visualization-area {
     padding-bottom: 300px;
-    padding-top: 10px;
+    padding-top: 80px; /* Account for compact navigation */
     padding-left: 20px;
   }
 }
