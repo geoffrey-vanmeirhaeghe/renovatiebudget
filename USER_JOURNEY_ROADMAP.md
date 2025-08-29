@@ -4,6 +4,32 @@
 
 Comprehensive user journey design based on multi-expert analysis (Full-Stack Architecture, Belgian Construction Compliance, UX Design, Business Strategy). This document serves as our north star for platform development from current 3D visualization tool to complete renovation management platform.
 
+## 👥 User Personas & Execution Paths
+
+### DIY Enthusiast "Thomas"
+- **Profile**: Tech-savvy, hands-on, budget-conscious
+- **Path**: Full DIY with premium support
+- **Needs**: Tutorials, material lists, safety guidance, community
+- **Revenue**: €29/month premium + material affiliate fees
+
+### Hybrid Renovator "Marie"
+- **Profile**: Some skills, limited time, quality-focused
+- **Path**: DIY painting/finishing, contractors for structural/technical
+- **Needs**: Coordination tools, handoff management, quality checks
+- **Revenue**: €69/month coordination + partial contractor fees
+
+### Busy Professional "Laurent"
+- **Profile**: High income, no time, wants oversight
+- **Path**: Full contractor with project management
+- **Needs**: Transparency, milestones, quality assurance
+- **Revenue**: 4% transaction fees + €99/month management tools
+
+### Property Investor "Sophie"
+- **Profile**: Multiple properties, cost-optimization, speed
+- **Path**: Hybrid with preferred contractor network
+- **Needs**: Portfolio management, bulk pricing, standardization
+- **Revenue**: Enterprise pricing + volume transaction fees
+
 ## 🎯 Core User Journey: "Smart Start" Approach
 
 ### Phase 1: Smart Discovery (15 minutes to value)
@@ -39,16 +65,76 @@ Comprehensive user journey design based on multi-expert analysis (Full-Stack Arc
 - Permit complexity scoring
 - Budget range validation
 
-### Phase 4: Contractor Connection (Variable)
-**Goal**: Seamless handoff to qualified professionals
+### Phase 4: Execution Path Selection (10 minutes)
+**Goal**: Choose the right approach for your situation
 
-**Flow**: `Project Summary → Matching → Quotes → Comparison → Selection → Project Launch`
+**Flow**: `DIY Assessment → Path Selection → Resource Planning → Timeline Creation`
 
 **Key Features**:
-- Pre-vetted contractor database
-- Belgian certification verification
-- Project-specific matching
-- Transaction fee revenue model
+- DIY capability assessment quiz
+- Hybrid approach recommendations
+- Cost vs. time vs. quality trade-offs
+- Path-specific resource lists
+
+**Three Paths**:
+1. **Full DIY**: Complete guidance and support
+2. **Hybrid**: DIY some tasks, contractors for others
+3. **Full Contractor**: Professional management
+
+### Phase 5A: DIY Execution Support (Throughout project)
+**Goal**: Enable successful self-execution with professional guidance
+
+**Flow**: `Task Breakdown → Tutorials → Shopping Lists → Progress Tracking → Community Support → Completion`
+
+**Key Features**:
+- Step-by-step video tutorials
+- Material shopping lists with local suppliers
+- Tool rental recommendations
+- Safety checklists and warnings
+- Community forum for troubleshooting
+- Professional helpline (premium feature)
+- Progress photos and documentation
+
+### Phase 5B: Hybrid Coordination (Throughout project)
+**Goal**: Seamlessly coordinate DIY work with professional tasks
+
+**Flow**: `Task Division → Scheduling → Handoff Points → Quality Checks → Documentation`
+
+**Key Features**:
+- Clear task ownership matrix
+- Critical path scheduling
+- DIY-to-contractor handoff checklists
+- Quality verification at transition points
+- Shared project timeline
+- Material coordination
+
+### Phase 5C: Contractor Management (Throughout project)
+**Goal**: Full project oversight and contractor accountability
+
+**Flow**: `Kickoff → Milestones → Payments → Changes → Quality Control → Completion`
+
+**Key Features**:
+- Digital contract management
+- Milestone-based payments
+- Change order tracking
+- Photo documentation requirements
+- Quality checkpoints
+- Issue escalation system
+- Review and feedback system
+
+### Phase 6: Project Completion & Beyond (Post-renovation)
+**Goal**: Ensure proper closure and long-term value
+
+**Flow**: `Final Inspection → Documentation → Warranties → Maintenance Schedule → Energy Certification`
+
+**Key Features**:
+- Completion checklists by trade
+- As-built documentation
+- Warranty management
+- Maintenance reminders
+- Energy performance certificate
+- Property value assessment
+- Project showcase/portfolio
 
 ## 🚀 Implementation Roadmap
 
@@ -91,9 +177,13 @@ Comprehensive user journey design based on multi-expert analysis (Full-Stack Arc
 ### Revenue Streams
 1. **Transaction Fees**: 3-5% on contractor payments
 2. **Lead Generation**: €25-50 per contractor lead
-3. **Premium Subscriptions**: €29-49/month homeowner features
-4. **Contractor SaaS**: €89-149/month project management tools
-5. **Compliance Services**: €199-399 per permit assistance
+3. **DIY Premium Support**: €19-39/month (tutorials, helpline, community)
+4. **Hybrid Coordination**: €49-99/month (scheduling, handoffs, oversight)
+5. **Contractor SaaS**: €89-149/month project management tools
+6. **Compliance Services**: €199-399 per permit assistance
+7. **Material Marketplace**: 2-3% affiliate commissions
+8. **Tool Rental Partners**: 5-10% referral fees
+9. **Insurance Products**: 10-15% commission on renovation insurance
 
 ### Key Metrics
 - Customer Acquisition Cost: €150-250 homeowners, €300-500 contractors  

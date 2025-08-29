@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ["@tresjs/nuxt"],
+  modules: ["@tresjs/nuxt", "@nuxtjs/tailwindcss"],
 
   // Auto import components: https://go.nuxtjs.dev/config-components
   components: true,

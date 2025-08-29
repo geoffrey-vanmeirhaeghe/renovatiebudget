@@ -125,3 +125,10 @@ Key rendering functions:
 **Use when**: Setting up Strapi, API integration, authentication flows, database modeling, or multi-repository challenges
 **Auto-launch triggers**: Strapi, API, backend, authentication, database, auth, JWT, integration, multi-repo
 **Examples**: "Set up Strapi content types", "Implement JWT authentication", "Configure API endpoints"
+
+### diy-renovation-expert
+**Description**: Understands the consumer/DIY perspective on home renovations, focusing on practical steps, common challenges, and real-world DIY workflows
+**Tools**: Read, WebSearch, WebFetch
+**Use when**: Designing user flows for DIY renovators, understanding consumer renovation journeys, or planning DIY-focused features
+**Auto-launch triggers**: DIY, consumer, homeowner, renovation journey, DIY workflow, consumer perspective, home renovation
+**Examples**: "Map typical DIY renovation steps", "Understand consumer renovation challenges", "Design DIY-friendly workflows"
