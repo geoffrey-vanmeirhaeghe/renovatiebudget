@@ -87,196 +87,126 @@
           <div class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
             <h3 class="text-xl font-semibold text-gray-800">Renovation Works</h3>
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-gray-500 font-medium">3 active</span>
+              <span class="text-gray-500 font-medium">{{ activeWorks.length }} active</span>
               <span class="text-gray-300">•</span>
-              <span class="text-gray-500 font-medium">4 planned</span>
+              <span class="text-gray-500 font-medium">{{ plannedWorks.length }} planned</span>
               <span class="text-gray-300">•</span>
-              <span class="text-gray-900 font-semibold">€54,000 total budget</span>
+              <span class="text-gray-900 font-semibold">{{ formatCurrency(totalBudget) }} total budget</span>
             </div>
           </div>
           
           <!-- Work Items List -->
           <div class="flex flex-col gap-8 min-w-0 overflow-hidden">
             <!-- Active Works -->
-            <div class="flex flex-col gap-4 min-w-0">
+            <div class="flex flex-col gap-4 min-w-0" v-if="activeWorks.length > 0">
               <div class="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-2">Active</div>
               
-              <div class="flex relative">
-                <div class="flex-1 bg-white border border-gray-300 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 shadow-sm">
+              <div class="flex relative" v-for="work in activeWorks" :key="work.id">
+                <div class="flex-1 bg-white border border-gray-300 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 shadow-sm hover:shadow-md">
                   <div class="flex justify-between items-start gap-4 min-w-0">
                     <div class="flex flex-col gap-2 flex-1 min-w-0">
-                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">Kitchen Renovation</h4>
+                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">{{ work.name }}</h4>
                       <div class="flex items-center gap-3 text-sm flex-wrap">
-                        <span class="font-semibold text-success-600">€15,000</span>
-                        <span class="bg-primary-100 text-primary-800 px-2 py-0.5 rounded text-xs font-semibold">Hybrid</span>
-                        <span class="text-primary-600 font-semibold text-xs bg-primary-100 px-2 py-0.5 rounded">Now</span>
+                        <span class="font-semibold text-success-600">{{ formatCurrency(work.budget) }}</span>
+                        <span 
+                          class="px-2 py-0.5 rounded text-xs font-semibold"
+                          :class="{
+                            'bg-success-100 text-success-800': work.executionType === 'DIY',
+                            'bg-primary-100 text-primary-800': work.executionType === 'Hybrid',
+                            'bg-warning-100 text-warning-800': work.executionType === 'Contractor'
+                          }"
+                        >
+                          {{ work.executionType }}
+                        </span>
+                        <span class="text-primary-600 font-semibold text-xs bg-primary-100 px-2 py-0.5 rounded">{{ formatWorkTimeline(work.timeline, work.year) }}</span>
                       </div>
                     </div>
+                    <button 
+                      @click="handleAdvancePhase(work.id)"
+                      v-if="work.currentPhase !== 'close'"
+                      class="flex-shrink-0 bg-success-500 text-white border-0 px-2 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all duration-200 hover:bg-success-600 hover:shadow-md whitespace-nowrap"
+                      title="Advance to next phase"
+                    >
+                      Next Phase →
+                    </button>
                   </div>
                   <div class="flex items-center gap-4">
                     <div class="flex gap-1.5">
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Dream & Discover"></span>
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Financing"></span>
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Design"></span>
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Prepare & Plan"></span>
-                      <span class="w-2 h-2 rounded-full bg-warning-400 shadow-sm animate-pulse-slow" title="Execute & Track"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Administration"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Close"></span>
+                      <span 
+                        v-for="phase in work.phases" 
+                        :key="phase.phase"
+                        class="w-2 h-2 rounded-full transition-all duration-200" 
+                        :class="{
+                          'bg-primary-500': phase.status === 'completed',
+                          'bg-warning-400 shadow-sm animate-pulse-slow': phase.status === 'in_progress',
+                          'bg-gray-200': phase.status === 'pending'
+                        }"
+                        :title="PHASE_LABELS[phase.phase]"
+                      ></span>
                     </div>
-                    <span class="text-xs font-semibold text-gray-600">Execute & Track</span>
+                    <span class="text-xs font-semibold text-gray-600">{{ PHASE_LABELS[work.currentPhase] }}</span>
                   </div>
                   <div class="flex items-center gap-3">
                     <div class="flex-1 h-1.5 bg-gray-200 rounded-sm overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-primary-500 to-primary-700 transition-all duration-300 ease-out" style="width: 65%"></div>
+                      <div class="h-full bg-gradient-to-r from-primary-500 to-primary-700 transition-all duration-300 ease-out" :style="`width: ${work.progress}%`"></div>
                     </div>
-                    <span class="text-xs text-gray-500 font-medium whitespace-nowrap">65% complete</span>
+                    <span class="text-xs text-gray-500 font-medium whitespace-nowrap">{{ work.progressDescription || `${work.progress}% complete` }}</span>
                   </div>
                 </div>
               </div>
 
-              <div class="flex relative">
-                <div class="flex-1 bg-white border border-gray-300 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 shadow-sm">
-                  <div class="flex justify-between items-start gap-4 min-w-0">
-                    <div class="flex flex-col gap-2 flex-1 min-w-0">
-                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">Bathroom Remodel</h4>
-                      <div class="flex items-center gap-3 text-sm flex-wrap">
-                        <span class="font-semibold text-success-600">€8,000</span>
-                        <span class="bg-success-100 text-success-800 px-2 py-0.5 rounded text-xs font-semibold">DIY</span>
-                        <span class="text-primary-600 font-semibold text-xs bg-primary-100 px-2 py-0.5 rounded">Now</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <div class="flex gap-1.5">
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Dream & Discover"></span>
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Financing"></span>
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Design"></span>
-                      <span class="w-2 h-2 rounded-full bg-warning-400 shadow-sm animate-pulse-slow" title="Prepare & Plan"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Execute & Track"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Administration"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Close"></span>
-                    </div>
-                    <span class="text-xs font-semibold text-gray-600">Prepare & Plan</span>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <div class="flex-1 h-1.5 bg-gray-200 rounded-sm overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-primary-500 to-primary-700 transition-all duration-300 ease-out" style="width: 30%"></div>
-                    </div>
-                    <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Ordering materials</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex relative">
-                <div class="flex-1 bg-white border border-gray-300 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 shadow-sm">
-                  <div class="flex justify-between items-start gap-4 min-w-0">
-                    <div class="flex flex-col gap-2 flex-1 min-w-0">
-                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">Roof Insulation</h4>
-                      <div class="flex items-center gap-3 text-sm flex-wrap">
-                        <span class="font-semibold text-success-600">€6,000</span>
-                        <span class="bg-warning-100 text-warning-800 px-2 py-0.5 rounded text-xs font-semibold">Contractor</span>
-                        <span class="text-primary-600 font-semibold text-xs bg-primary-100 px-2 py-0.5 rounded">Now</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <div class="flex gap-1.5">
-                      <span class="w-2 h-2 rounded-full bg-primary-500 transition-all duration-200" title="Dream & Discover"></span>
-                      <span class="w-2 h-2 rounded-full bg-warning-400 shadow-sm animate-pulse-slow" title="Financing"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Design"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Prepare & Plan"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Execute & Track"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Administration"></span>
-                      <span class="w-2 h-2 rounded-full bg-gray-200 transition-all duration-200" title="Close"></span>
-                    </div>
-                    <span class="text-xs font-semibold text-gray-600">Financing</span>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <div class="flex-1 h-1.5 bg-gray-200 rounded-sm overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-primary-500 to-primary-700 transition-all duration-300 ease-out" style="width: 15%"></div>
-                    </div>
-                    <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Applying for green loan</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <!-- Planned Works -->
-            <div class="flex flex-col gap-4 min-w-0">
+            <div class="flex flex-col gap-4 min-w-0" v-if="plannedWorks.length > 0">
               <div class="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-2">Ready to Activate</div>
               
-              <div class="flex relative">
-                <div class="flex-1 bg-warning-50 border border-warning-300 border-dashed rounded-lg p-4 flex flex-col gap-3 transition-all duration-200">
+              <div class="flex relative" v-for="work in plannedWorks" :key="work.id">
+                <div class="flex-1 bg-warning-50 border border-warning-300 border-dashed rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 hover:bg-warning-100">
                   <div class="flex justify-between items-start gap-4 min-w-0">
                     <div class="flex flex-col gap-2 flex-1 min-w-0">
-                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">Solar Panel Installation</h4>
+                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">{{ work.name }}</h4>
                       <div class="flex items-center gap-3 text-sm flex-wrap">
-                        <span class="font-semibold text-success-600">€8,000</span>
-                        <span class="text-gray-600 font-medium">Budgeted</span>
-                        <span class="text-warning-600 font-semibold text-xs bg-warning-100 px-2 py-0.5 rounded">Q2 2025</span>
+                        <span class="font-semibold text-success-600">{{ formatCurrency(work.budget) }}</span>
+                        <span class="text-gray-600 font-medium" v-if="work.financing?.secured">{{ work.financing.type || 'Budgeted' }}</span>
+                        <span class="text-warning-600 font-semibold text-xs bg-warning-100 px-2 py-0.5 rounded">{{ formatWorkTimeline(work.timeline, work.year) }}</span>
                       </div>
                     </div>
-                    <button class="flex-shrink-0 bg-primary-500 text-white border-0 px-3 py-1.5 rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-primary-600 hover:translate-x-0.5 hover:shadow-md whitespace-nowrap">
+                    <button 
+                      @click="handleActivateWork(work.id)"
+                      v-if="work.canActivate"
+                      class="flex-shrink-0 bg-primary-500 text-white border-0 px-3 py-1.5 rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-primary-600 hover:translate-x-0.5 hover:shadow-md whitespace-nowrap"
+                    >
                       Activate →
                     </button>
                   </div>
-                </div>
-              </div>
-
-              <div class="flex relative">
-                <div class="flex-1 bg-warning-50 border border-warning-300 border-dashed rounded-lg p-4 flex flex-col gap-3 transition-all duration-200">
-                  <div class="flex justify-between items-start gap-4 min-w-0">
-                    <div class="flex flex-col gap-2 flex-1 min-w-0">
-                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">Garden Terrace</h4>
-                      <div class="flex items-center gap-3 text-sm flex-wrap">
-                        <span class="font-semibold text-success-600">€5,000</span>
-                        <span class="text-gray-600 font-medium">Budgeted</span>
-                        <span class="text-warning-600 font-semibold text-xs bg-warning-100 px-2 py-0.5 rounded">Q3 2025</span>
-                      </div>
-                    </div>
-                    <button class="flex-shrink-0 bg-primary-500 text-white border-0 px-3 py-1.5 rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-primary-600 hover:translate-x-0.5 hover:shadow-md whitespace-nowrap">
-                      Activate →
-                    </button>
+                  <div class="text-xs text-gray-500 italic" v-if="work.description">
+                    {{ work.description }}
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Future Works -->
-            <div class="flex flex-col gap-4 min-w-0">
+            <div class="flex flex-col gap-4 min-w-0" v-if="futureWorks.length > 0">
               <div class="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-2">Future Planned</div>
               
-              <div class="flex relative">
+              <div class="flex relative" v-for="work in futureWorks" :key="work.id">
                 <div class="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 opacity-70">
                   <div class="flex justify-between items-start gap-4 min-w-0">
                     <div class="flex flex-col gap-2 flex-1 min-w-0">
-                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">Window Replacement</h4>
+                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">{{ work.name }}</h4>
                       <div class="flex items-center gap-3 text-sm flex-wrap">
-                        <span class="font-semibold text-success-600">€12,000</span>
-                        <span class="text-gray-600 font-medium">Mijnverbouwlening secured</span>
-                        <span class="text-gray-500 font-semibold text-xs bg-gray-200 px-2 py-0.5 rounded">2027</span>
+                        <span class="font-semibold text-success-600">{{ formatCurrency(work.budget) }}</span>
+                        <span class="text-gray-600 font-medium">{{ work.financing?.type || 'Conceptual' }}</span>
+                        <span class="text-gray-500 font-semibold text-xs bg-gray-200 px-2 py-0.5 rounded">{{ formatWorkTimeline(work.timeline, work.year) }}</span>
                       </div>
                     </div>
                   </div>
-                  <div class="text-xs text-gray-500 italic">
-                    Financing secured • Awaiting 2027 for execution
+                  <div class="text-xs text-gray-500 italic" v-if="work.financing?.secured">
+                    Financing secured • Awaiting {{ work.year }} for execution
                   </div>
-                </div>
-              </div>
-
-              <div class="flex relative">
-                <div class="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 opacity-70">
-                  <div class="flex justify-between items-start gap-4 min-w-0">
-                    <div class="flex flex-col gap-2 flex-1 min-w-0">
-                      <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">Full Attic Conversion</h4>
-                      <div class="flex items-center gap-3 text-sm flex-wrap">
-                        <span class="font-semibold text-success-600">€20,000</span>
-                        <span class="text-gray-600 font-medium">Conceptual</span>
-                        <span class="text-gray-500 font-semibold text-xs bg-gray-200 px-2 py-0.5 rounded">2028</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="text-xs text-gray-500 italic">
+                  <div class="text-xs text-gray-500 italic" v-else>
                     Long-term planning
                   </div>
                 </div>
@@ -291,6 +221,7 @@
 
 <script setup lang="ts">
 import AppHeader from '~/components/layout/AppHeader.vue'
+import { PHASE_LABELS } from '~/types/renovationWork'
 
 // Protect this page with authentication
 definePageMeta({
@@ -302,6 +233,19 @@ const { currentUser, getUserRegion, logout } = useAuth()
 
 // Get project data
 const { currentProject, loadProject } = useProject()
+
+// Get renovation works data
+const { 
+  state: worksState,
+  activeWorks, 
+  plannedWorks, 
+  futureWorks,
+  totalBudget,
+  loadWorks,
+  activateWork,
+  updateWorkProgress,
+  advancePhase
+} = useRenovationWorks()
 
 // Calculate project statistics from real Strapi data
 const projectStats = computed(() => {
@@ -381,11 +325,53 @@ onMounted(async () => {
     
     // Load project data (fallback to mock if Strapi unavailable)
     await loadProject('ca66f5looy2mij5rua9yj987', true)
+    
+    // Load renovation works
+    await loadWorks('ca66f5looy2mij5rua9yj987')
   } catch (error) {
     console.error('Failed to load Strapi data, falling back to mock data:', error)
     const { loadProject } = useProject()
     await loadProject()
+    await loadWorks()
   }
 })
+
+// Handle work activation
+const handleActivateWork = async (workId: string) => {
+  const success = await activateWork(workId)
+  if (success) {
+    console.log('✅ Work activated successfully')
+  }
+}
+
+// Handle phase advancement
+const handleAdvancePhase = async (workId: string) => {
+  const success = await advancePhase(workId)
+  if (success) {
+    console.log('✅ Phase advanced successfully')
+  }
+}
+
+// Format currency
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-BE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount)
+}
+
+// Format timeline
+const formatWorkTimeline = (timeline: string, year?: number) => {
+  if (timeline === 'now') return 'Now'
+  if (year) {
+    if (timeline.startsWith('Q')) {
+      return `${timeline} ${year}`
+    }
+    return year.toString()
+  }
+  return timeline
+}
 </script>
 
