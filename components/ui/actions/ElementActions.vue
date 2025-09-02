@@ -252,8 +252,8 @@ const getElementDisplayName = () => {
   return props.elementType
 }
 
-// Default actions factory (can be used by parent components)
-export const createDefaultActions = (elementType: string): ElementAction[] => {
+// Default actions factory (internal use only - moved from export)
+const createDefaultActions = (elementType: string): ElementAction[] => {
   const actions: ElementAction[] = []
   
   // Common actions for most elements
@@ -340,12 +340,13 @@ export const createDefaultActions = (elementType: string): ElementAction[] => {
   return actions
 }
 
-// Expose helper function for parent components
+// Expose helper functions for parent components
 defineExpose({
   executeAction,
   availableActions,
   quickActions,
-  contextActions
+  contextActions,
+  createDefaultActions
 })
 </script>
 

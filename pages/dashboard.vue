@@ -86,12 +86,23 @@
         <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200 flex-1 min-w-0 overflow-hidden">
           <div class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
             <h3 class="text-xl font-semibold text-gray-800">Renovation Works</h3>
-            <div class="flex items-center gap-2 text-sm">
-              <span class="text-gray-500 font-medium">{{ activeWorks.length }} active</span>
-              <span class="text-gray-300">•</span>
-              <span class="text-gray-500 font-medium">{{ plannedWorks.length }} planned</span>
-              <span class="text-gray-300">•</span>
-              <span class="text-gray-900 font-semibold">{{ formatCurrency(totalBudget) }} total budget</span>
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="text-gray-500 font-medium">{{ activeWorks.length }} active</span>
+                <span class="text-gray-300">•</span>
+                <span class="text-gray-500 font-medium">{{ plannedWorks.length }} planned</span>
+                <span class="text-gray-300">•</span>
+                <span class="text-gray-900 font-semibold">{{ formatCurrency(totalBudget) }} total budget</span>
+              </div>
+              <button 
+                @click="showCreateWorkModal = true"
+                class="bg-primary-500 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary-600 transition-colors duration-200 flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Add Work
+              </button>
             </div>
           </div>
           
@@ -102,7 +113,7 @@
               <div class="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-2">Active</div>
               
               <div class="flex relative" v-for="work in activeWorks" :key="work.id">
-                <div class="flex-1 bg-white border border-gray-300 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 shadow-sm hover:shadow-md">
+                <div class="flex-1 bg-white border border-gray-300 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer" @click="openWorkDetail(work)">
                   <div class="flex justify-between items-start gap-4 min-w-0">
                     <div class="flex flex-col gap-2 flex-1 min-w-0">
                       <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">{{ work.name }}</h4>
@@ -121,36 +132,40 @@
                         <span class="text-primary-600 font-semibold text-xs bg-primary-100 px-2 py-0.5 rounded">{{ formatWorkTimeline(work.timeline, work.year) }}</span>
                       </div>
                     </div>
-                    <button 
-                      @click="handleAdvancePhase(work.id)"
-                      v-if="work.currentPhase !== 'close'"
-                      class="flex-shrink-0 bg-success-500 text-white border-0 px-2 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all duration-200 hover:bg-success-600 hover:shadow-md whitespace-nowrap"
-                      title="Advance to next phase"
-                    >
-                      Next Phase →
-                    </button>
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <div class="flex gap-1.5">
-                      <span 
-                        v-for="phase in work.phases" 
-                        :key="phase.phase"
-                        class="w-2 h-2 rounded-full transition-all duration-200" 
-                        :class="{
-                          'bg-primary-500': phase.status === 'completed',
-                          'bg-warning-400 shadow-sm animate-pulse-slow': phase.status === 'in_progress',
-                          'bg-gray-200': phase.status === 'pending'
-                        }"
-                        :title="PHASE_LABELS[phase.phase]"
-                      ></span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-gray-500 font-medium">{{ work.todos.length }} tasks</span>
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
-                    <span class="text-xs font-semibold text-gray-600">{{ PHASE_LABELS[work.currentPhase] }}</span>
                   </div>
                   <div class="flex items-center gap-3">
                     <div class="flex-1 h-1.5 bg-gray-200 rounded-sm overflow-hidden">
                       <div class="h-full bg-gradient-to-r from-primary-500 to-primary-700 transition-all duration-300 ease-out" :style="`width: ${work.progress}%`"></div>
                     </div>
                     <span class="text-xs text-gray-500 font-medium whitespace-nowrap">{{ work.progressDescription || `${work.progress}% complete` }}</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <button 
+                      @click.stop="handleDeactivateWork(work.id)"
+                      class="bg-gray-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-gray-600 transition-colors duration-200 flex items-center gap-1"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="4" width="4" height="16"></rect>
+                        <rect x="14" y="4" width="4" height="16"></rect>
+                      </svg>
+                      Deactivate
+                    </button>
+                    <button 
+                      v-if="work.progress === 100 && work.status !== 'completed'"
+                      @click.stop="handleCompleteWork(work.id)"
+                      class="bg-success-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-success-600 transition-colors duration-200 flex items-center gap-1"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                      Complete Work
+                    </button>
                   </div>
                 </div>
               </div>
@@ -163,7 +178,7 @@
               
               <div class="flex relative" v-for="work in plannedWorks" :key="work.id">
                 <div class="flex-1 bg-warning-50 border border-warning-300 border-dashed rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 hover:bg-warning-100">
-                  <div class="flex justify-between items-start gap-4 min-w-0">
+                  <div class="flex justify-between items-start gap-4 min-w-0 cursor-pointer" @click="openWorkDetail(work)">
                     <div class="flex flex-col gap-2 flex-1 min-w-0">
                       <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">{{ work.name }}</h4>
                       <div class="flex items-center gap-3 text-sm flex-wrap">
@@ -172,16 +187,30 @@
                         <span class="text-warning-600 font-semibold text-xs bg-warning-100 px-2 py-0.5 rounded">{{ formatWorkTimeline(work.timeline, work.year) }}</span>
                       </div>
                     </div>
-                    <button 
-                      @click="handleActivateWork(work.id)"
-                      v-if="work.canActivate"
-                      class="flex-shrink-0 bg-primary-500 text-white border-0 px-3 py-1.5 rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-primary-600 hover:translate-x-0.5 hover:shadow-md whitespace-nowrap"
-                    >
-                      Activate →
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-gray-500 font-medium">{{ work.todos.length }} tasks</span>
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
-                  <div class="text-xs text-gray-500 italic" v-if="work.description">
+                  <div class="text-xs text-gray-500 italic mb-2" v-if="work.description">
                     {{ work.description }}
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <div class="text-xs text-gray-500">
+                      {{ work.canActivate ? 'Ready to start' : 'Planning stage' }}
+                    </div>
+                    <button 
+                      v-if="work.canActivate"
+                      @click.stop="handleActivateWork(work.id)"
+                      class="bg-primary-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-primary-600 transition-colors duration-200 flex items-center gap-1"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      Activate
+                    </button>
                   </div>
                 </div>
               </div>
@@ -192,7 +221,7 @@
               <div class="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-2">Future Planned</div>
               
               <div class="flex relative" v-for="work in futureWorks" :key="work.id">
-                <div class="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 opacity-70">
+                <div class="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 opacity-70 hover:opacity-90 cursor-pointer" @click="openWorkDetail(work)">
                   <div class="flex justify-between items-start gap-4 min-w-0">
                     <div class="flex flex-col gap-2 flex-1 min-w-0">
                       <h4 class="text-base font-semibold text-gray-900 overflow-hidden text-ellipsis whitespace-nowrap">{{ work.name }}</h4>
@@ -201,6 +230,12 @@
                         <span class="text-gray-600 font-medium">{{ work.financing?.type || 'Conceptual' }}</span>
                         <span class="text-gray-500 font-semibold text-xs bg-gray-200 px-2 py-0.5 rounded">{{ formatWorkTimeline(work.timeline, work.year) }}</span>
                       </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-gray-500 font-medium">{{ work.todos.length }} tasks</span>
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
                   </div>
                   <div class="text-xs text-gray-500 italic" v-if="work.financing?.secured">
@@ -216,12 +251,30 @@
         </div>
       </div>
     </div>
+    
+    <!-- Renovation Work Detail Modal -->
+    <RenovationWorkModal 
+      v-if="selectedWork"
+      :work="selectedWork"
+      :is-open="isModalOpen"
+      @close="closeWorkDetail"
+      @update="handleWorkUpdate"
+    />
+
+    <!-- Create Work Modal -->
+    <CreateWorkModal 
+      :is-open="showCreateWorkModal"
+      @close="showCreateWorkModal = false"
+      @create="handleCreateWork"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import AppHeader from '~/components/layout/AppHeader.vue'
-import { PHASE_LABELS } from '~/types/renovationWork'
+import RenovationWorkModal from '~/components/modals/RenovationWorkModal.vue'
+import CreateWorkModal from '~/components/modals/CreateWorkModal.vue'
+import type { RenovationWork } from '~/types/renovationWork'
 
 // Protect this page with authentication
 definePageMeta({
@@ -243,9 +296,16 @@ const {
   totalBudget,
   loadWorks,
   activateWork,
-  updateWorkProgress,
-  advancePhase
+  deactivateWork,
+  updateWork,
+  createWork,
+  completeWork
 } = useRenovationWorks()
+
+// Modal state
+const selectedWork = ref<RenovationWork | null>(null)
+const isModalOpen = ref(false)
+const showCreateWorkModal = ref(false)
 
 // Calculate project statistics from real Strapi data
 const projectStats = computed(() => {
@@ -344,11 +404,41 @@ const handleActivateWork = async (workId: string) => {
   }
 }
 
-// Handle phase advancement
-const handleAdvancePhase = async (workId: string) => {
-  const success = await advancePhase(workId)
+// Handle work deactivation
+const handleDeactivateWork = async (workId: string) => {
+  const success = await deactivateWork(workId)
   if (success) {
-    console.log('✅ Phase advanced successfully')
+    console.log('⏸️ Work deactivated successfully')
+  }
+}
+
+// Handle work detail view
+const openWorkDetail = (work: RenovationWork) => {
+  selectedWork.value = work
+  isModalOpen.value = true
+}
+
+const closeWorkDetail = () => {
+  selectedWork.value = null
+  isModalOpen.value = false
+}
+
+const handleWorkUpdate = (updatedWork: RenovationWork) => {
+  updateWork(updatedWork.id, updatedWork)
+}
+
+const handleCreateWork = async (workData: Partial<RenovationWork>) => {
+  const newWork = await createWork(workData)
+  if (newWork) {
+    console.log('✅ Work created successfully:', newWork.name)
+    showCreateWorkModal.value = false
+  }
+}
+
+const handleCompleteWork = async (workId: string) => {
+  const result = await completeWork(workId)
+  if (result && result.success) {
+    console.log('✅ Work completed successfully')
   }
 }
 

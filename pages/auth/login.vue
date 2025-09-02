@@ -55,7 +55,6 @@
 </template>
 
 <script setup lang="ts">
-// Define page meta
 definePageMeta({
   layout: false
 })
