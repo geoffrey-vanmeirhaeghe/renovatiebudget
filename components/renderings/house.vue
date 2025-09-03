@@ -19,8 +19,8 @@
         <!-- Surface -->
         <Plane
         :args="[
-            project.generalAttributes.propertySize.depth / 100,
-            project.generalAttributes.propertySize.width / 100,
+            safePropertySize.depth / 100,
+            safePropertySize.width / 100,
         ]"
         :position="[0, 0, 0]"
         @click="clearSelection"
@@ -30,19 +30,19 @@
 
         <!-- Floors - ALL floors render as floors -->
         <TresGroup
-        v-for="(floor, index) in project.floors"
+        v-for="(floor, index) in (project?.floors || {})"
         :key="floor"
         :ref="floor"
         >
         <Box
             :args="[
-            getFloorDimension(floor, 'depth') / 100,
-            floor.height / 100,
-            getFloorDimension(floor, 'width') / 100,
+            safeFloorSize.depth / 100,
+            (floor.height || 280) / 100,
+            safeFloorSize.width / 100,
             ]"
             :position="[
             (floor.positionZ || 0) / 100,
-            (floor.heightPosition + floor.height / 2) / 100,
+            ((floor.heightPosition || 0) + (floor.height || 280) / 2) / 100,
             -(floor.positionX || 0) / 100,
             ]"
             @click="selectFloor(index, floor)"
@@ -161,11 +161,22 @@ const { cameraState, initializeCameraState, updateCameraPosition, updateCameraTa
 const cameraRef = ref<PerspectiveCamera>()
 const controlsRef = ref<OrbitControls>()
 
+// Safe property getters with fallbacks
+const safePropertySize = computed(() => ({
+  width: props.project?.generalAttributes?.propertySize?.width || 1800,
+  depth: props.project?.generalAttributes?.propertySize?.depth || 1600
+}))
+
+const safeFloorSize = computed(() => ({
+  width: props.project?.generalAttributes?.floorSize?.width || 1000,
+  depth: props.project?.generalAttributes?.floorSize?.depth || 800
+}))
+
 // Default camera positioning based on project size
 const defaultCameraPosition = computed(() => [
-  (props.project.generalAttributes.propertySize.width / 100) * 2.5,
+  (safePropertySize.value.width / 100) * 2.5,
   1,
-  (props.project.generalAttributes.propertySize.depth / 100) * 0.5,
+  (safePropertySize.value.depth / 100) * 0.5,
 ])
 
 const defaultCameraTarget = computed(() => [0, 0, 0])

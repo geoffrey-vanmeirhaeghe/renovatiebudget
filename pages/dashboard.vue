@@ -257,9 +257,9 @@ import RenovationWorkModal from '~/components/modals/RenovationWorkModal.vue'
 import CreateWorkModal from '~/components/modals/CreateWorkModal.vue'
 import type { RenovationWork } from '~/types/renovationWork'
 
-// Protect this page with authentication
+// Protect this page with authentication and onboarding checks
 definePageMeta({
-  middleware: 'auth'
+  middleware: ['auth', 'onboarding']
 })
 
 // Get authentication state

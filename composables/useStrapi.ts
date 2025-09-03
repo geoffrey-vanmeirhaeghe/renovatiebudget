@@ -279,10 +279,22 @@ export const useStrapi = () => {
     timeout: 30000, // 30 seconds
     retry: 1,
     onRequest({ request, options }) {
+      // Add authentication token if available
+      if (process.client) {
+        const token = localStorage.getItem('auth_token')
+        if (token) {
+          options.headers = {
+            ...options.headers,
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
+      
       console.log('🌐 API Request:', {
         method: options.method || 'GET',
         url: request,
-        hasBody: !!options.body
+        hasBody: !!options.body,
+        hasAuth: !!options.headers?.Authorization
       })
     },
     onResponse({ response }) {
@@ -326,13 +338,29 @@ export const useStrapi = () => {
     }
   }
 
-  const loadUserProjects = async (): Promise<Project[]> => {
+  const loadUserProjects = async (userId?: string): Promise<Project[]> => {
     const operation = 'Load User Projects'
-    console.log(`📋 ${operation} - Starting...`)
+    
+    // Get current user if no userId provided
+    if (!userId) {
+      const { currentUser } = useAuth()
+      userId = currentUser.value?.id?.toString()
+    }
+    
+    console.log(`📋 ${operation} - Starting...`, { userId })
     
     try {
       // Use the working populate syntax from our tests with deep nesting for Windows/Doors
-      const endpoint = '/api/projects?populate[building][populate][floors][populate][Windows]=true&populate[building][populate][floors][populate][Doors]=true&populate[building][populate][Roof]=true'
+      let endpoint = '/api/projects?populate[building][populate][floors][populate][Windows]=true&populate[building][populate][floors][populate][Doors]=true&populate[building][populate][Roof]=true'
+      
+      // Add user filter - REQUIRED for security
+      if (userId) {
+        endpoint += `&filters[user][id][$eq]=${userId}`
+      } else {
+        console.warn('⚠️ No user ID available - this will return ALL projects!')
+      }
+      
+      console.log(`🔗 API endpoint: ${endpoint}`)
       const response = await client<{data: any[]}>(endpoint)
       
       console.log(`✅ ${operation} - Success:`, {
@@ -358,7 +386,7 @@ export const useStrapi = () => {
     console.log(`💾 ${operation} - Starting...`, {
       isNewProject,
       projectId: project.id,
-      hasFloors: Object.keys(project.floors).length,
+      hasFloors: project.floors ? Object.keys(project.floors).length : 0,
       hasRoof: !!project.roof
     })
     
@@ -375,7 +403,7 @@ export const useStrapi = () => {
         projectId: project.id, 
         projectName: project.name,
         isNewProject,
-        floorCount: Object.keys(project.floors).length
+        floorCount: project.floors ? Object.keys(project.floors).length : 0
       })
       throw new Error(`Failed to save project: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -407,19 +435,63 @@ export const useStrapi = () => {
 
   // Two-phase save strategy for Strapi v5 relations
   const createProjectWithRelations = async (project: Omit<Project, 'id'>): Promise<Project> => {
-    // Phase 1: Create project with basic data only
-    const basicProjectData = {
-      ProjectID: `PRJ-${Date.now()}`, // Required field
-      ProjectName: project.name,
-      Scope: 'New construction', // Required field - default value
-      ProjectStatus: 'Starting up', // Required field - default value
-      GeneralAttributes: project.generalAttributes
+    // Get current user for relation
+    const { currentUser } = useAuth()
+    const userId = currentUser.value?.id
+    
+    if (!userId) {
+      throw new Error('User must be authenticated to create projects')
     }
     
-    const projectResponse = await client<{data: any}>('/api/projects', {
-      method: 'POST',
-      body: { data: basicProjectData }
-    })
+    // Extract required fields from project metadata (populated by onboarding)
+    const metadata = project.metadata || {}
+    
+    // Phase 1: Create project with ONLY the fields that ACTUALLY exist in Strapi
+    const basicProjectData = {
+      ProjectID: project.name ? project.name.toLowerCase().replace(/\s+/g, '-') : `project-${Date.now()}`,
+      ProjectName: project.name || 'My Project',
+      Scope: 'Full renovation', // Required field - use a valid enum value from Strapi
+      ProjectStatus: 'Setup', // Must match Strapi enum exactly (capital S)
+      GeneralAttributes: project.generalAttributes || {},
+      users_permissions_user: userId, // Correct relation field name
+      Description: project.description || ''
+    }
+    
+    // Store all the onboarding metadata in GeneralAttributes since other fields don't exist
+    if (metadata && Object.keys(metadata).length > 0) {
+      basicProjectData.GeneralAttributes = {
+        ...basicProjectData.GeneralAttributes,
+        metadata: metadata // Store all onboarding data here
+      }
+    }
+    
+    console.log('🔍 DEBUG: Project data being sent to Strapi:', JSON.stringify(basicProjectData, null, 2))
+    
+    try {
+      const projectResponse = await client<{data: any}>('/api/projects', {
+        method: 'POST',
+        body: { data: basicProjectData }
+      })
+      
+      console.log('✅ Project created successfully:', projectResponse)
+      return projectResponse
+    } catch (error: any) {
+      console.error('❌ STRAPI ERROR DETAILS:')
+      console.error('Status:', error.status || error.statusCode)
+      console.error('Status Text:', error.statusText)
+      console.error('Error Data:', error.data)
+      console.error('Error Message:', error.message)
+      
+      if (error.data?.error) {
+        console.error('Strapi Error Object:', JSON.stringify(error.data.error, null, 2))
+        if (error.data.error.details) {
+          console.error('Validation Details:', JSON.stringify(error.data.error.details, null, 2))
+        }
+      }
+      
+      // Re-throw with more context
+      throw error
+    }
     
     const createdProject = projectResponse.data
     
@@ -1474,11 +1546,13 @@ export const useStrapi = () => {
       ...options.headers
     }
     
-    // TODO: Add authentication when auth system is ready
-    // const { data: user } = await useAuth()
-    // if (user.value?.jwt) {
-    //   headers.Authorization = `Bearer ${user.value.jwt}`
-    // }
+    // Add authentication token if available
+    if (process.client) {
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    }
     
     return await client(endpoint, {
       ...options,
@@ -1488,14 +1562,24 @@ export const useStrapi = () => {
 
   const fetchUserRenovationWorks = async (userId?: string) => {
     const operation = 'Fetch User Renovation Works'
-    console.log(`🔨 ${operation} - Starting...`)
+    
+    // Get current user if no userId provided
+    if (!userId) {
+      const { currentUser } = useAuth()
+      userId = currentUser.value?.id?.toString()
+    }
+    
+    console.log(`🔨 ${operation} - Starting...`, { userId })
     
     try {
       // Start with basic endpoint and try to populate everything available
       let endpoint = '/api/renovation-works?populate=*&sort=createdAt:desc'
       
+      // Add user filter - REQUIRED for security (using correct field name from Strapi)
       if (userId) {
-        endpoint += `&filters[user][id][$eq]=${userId}`
+        endpoint += `&filters[users_permissions_user][id][$eq]=${userId}`
+      } else {
+        console.warn('⚠️ No user ID available - this will return ALL renovation works!')
       }
       
       console.log(`🔗 API endpoint: ${endpoint}`)
@@ -1546,7 +1630,7 @@ export const useStrapi = () => {
         try {
           let fallbackEndpoint = '/api/renovation-works?sort=createdAt:desc'
           if (userId) {
-            fallbackEndpoint += `&filters[user][id][$eq]=${userId}`
+            fallbackEndpoint += `&filters[users_permissions_user][id][$eq]=${userId}`
           }
           
           const fallbackResponse = await apiCall(fallbackEndpoint, { method: 'GET' })
@@ -1605,9 +1689,17 @@ export const useStrapi = () => {
         Contractor: workData.contractor || { name: null, phone: null, email: null }
       }
       
-      // Add user relation if available
-      if (workData.userId) {
-        strapiData.user = workData.userId
+      // Add user relation - get current user if not provided
+      let userId = workData.userId
+      if (!userId) {
+        const { currentUser } = useAuth()
+        userId = currentUser.value?.id
+      }
+      
+      if (userId) {
+        strapiData.user = userId
+      } else {
+        throw new Error('User must be authenticated to create renovation works')
       }
       
       // Add project relation if available  
@@ -1662,7 +1754,14 @@ export const useStrapi = () => {
       
       if (!isNumericId) {
         // This might be a documentId, we need to find the actual work
-        const works = await apiCall('/api/renovation-works', { method: 'GET' })
+        // Add user filter for security - only find works belonging to current user
+        const { currentUser } = useAuth()
+        const userId = currentUser.value?.id
+        let endpoint = '/api/renovation-works'
+        if (userId) {
+          endpoint += `?filters[user][id][$eq]=${userId}`
+        }
+        const works = await apiCall(endpoint, { method: 'GET' })
         const foundWork = works.data.find((w: any) => 
           w.id === workId || w.documentId === workId
         )
@@ -1758,7 +1857,14 @@ export const useStrapi = () => {
       
       if (!isNumericId) {
         // This might be a documentId, we need to find the actual work
-        const works = await apiCall('/api/renovation-works', { method: 'GET' })
+        // Add user filter for security - only find works belonging to current user
+        const { currentUser } = useAuth()
+        const userId = currentUser.value?.id
+        let endpoint = '/api/renovation-works'
+        if (userId) {
+          endpoint += `?filters[user][id][$eq]=${userId}`
+        }
+        const works = await apiCall(endpoint, { method: 'GET' })
         const foundWork = works.data.find((w: any) => 
           w.id === workId || w.documentId === workId
         )

@@ -1,0 +1,156 @@
+{
+  "kind": "collectionType",
+  "collectionName": "projects",
+  "info": {
+    "singularName": "project",
+    "pluralName": "projects",
+    "displayName": "Project",
+    "description": "Renovation project with property details"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "ProjectID": {
+      "type": "uid",
+      "required": true
+    },
+    "ProjectName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "Description": {
+      "type": "text",
+      "maxLength": 1000
+    },
+    "PropertyAddress": {
+      "type": "json",
+      "required": true,
+      "description": "Full property address including street, number, postalCode, municipality, region"
+    },
+    "PropertyType": {
+      "type": "enumeration",
+      "enum": [
+        "house",
+        "apartment",
+        "townhouse",
+        "studio",
+        "loft",
+        "commercial",
+        "mixed-use",
+        "other"
+      ],
+      "required": true
+    },
+    "PropertyOwnership": {
+      "type": "enumeration",
+      "enum": [
+        "owner",
+        "renter",
+        "looking-to-buy",
+        "investor"
+      ],
+      "required": true
+    },
+    "PropertySize": {
+      "type": "integer",
+      "description": "Property size in m²"
+    },
+    "YearBuilt": {
+      "type": "integer",
+      "min": 1800,
+      "max": 2025
+    },
+    "RenovationScope": {
+      "type": "enumeration",
+      "enum": [
+        "complete-renovation",
+        "partial-renovation",
+        "single-room",
+        "cosmetic-updates",
+        "maintenance",
+        "extension",
+        "energy-upgrade"
+      ],
+      "required": true
+    },
+    "ProjectTimeline": {
+      "type": "enumeration",
+      "enum": [
+        "immediate",
+        "this-quarter",
+        "this-year",
+        "next-year",
+        "2-3-years",
+        "planning-phase"
+      ],
+      "required": true
+    },
+    "EstimatedBudget": {
+      "type": "enumeration",
+      "enum": [
+        "under-10k",
+        "10k-25k",
+        "25k-50k",
+        "50k-100k",
+        "100k-200k",
+        "200k-500k",
+        "over-500k",
+        "not-determined"
+      ]
+    },
+    "ActualBudget": {
+      "type": "decimal",
+      "description": "Actual budget amount in EUR"
+    },
+    "ProjectInterests": {
+      "type": "json",
+      "description": "Array of renovation interests specific to this project"
+    },
+    "ProjectStatus": {
+      "type": "enumeration",
+      "enum": [
+        "setup",
+        "in process",
+        "follow-up", 
+        "done"
+      ],
+      "default": "setup"
+    },
+    "StartDate": {
+      "type": "date"
+    },
+    "CompletionDate": {
+      "type": "date"
+    },
+    "GeneralAttributes": {
+      "type": "json",
+      "description": "3D model general attributes"
+    },
+    "Notes": {
+      "type": "richtext"
+    },
+    "IsPrimary": {
+      "type": "boolean",
+      "default": false,
+      "description": "Is this the user's primary/active project"
+    },
+    "building": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::building.building"
+    },
+    "renovationWorks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::renovation-work.renovation-work",
+      "mappedBy": "project"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

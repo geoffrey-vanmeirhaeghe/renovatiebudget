@@ -42,7 +42,7 @@ const lastSavedProjectState = ref<string>('')
 const hasUnsavedChanges = ref(false)
 
 const canSave = computed(() => {
-  return currentProject.value && !currentProject.value.id.startsWith('mock-')
+  return currentProject.value && currentProject.value.id && !currentProject.value.id.startsWith('mock-')
 })
 
 // Watch for project changes to detect unsaved modifications

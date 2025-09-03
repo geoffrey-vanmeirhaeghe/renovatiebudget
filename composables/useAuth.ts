@@ -12,21 +12,8 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  firstName: string
-  lastName: string
   email: string
   password: string
-  address: {
-    street: string
-    number: string
-    postalCode: string
-    municipality: string
-    province: string
-    region: string
-  }
-  propertyType: string
-  renovationScale: string
-  timeline: string
 }
 
 export const useAuth = () => {
@@ -67,48 +54,71 @@ export const useAuth = () => {
     authError.value = null
     
     try {
-      // TODO: Replace with actual Strapi authentication
-      // For now, simulate login with mock data
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Get Strapi base URL from runtime config
+      const config = useRuntimeConfig()
+      const strapiBaseUrl = config.public.strapiBaseUrl
       
-      if (email === 'demo@example.com' && password === 'password') {
-        const mockUser: User = {
-          id: '1',
-          email: email,
-          firstName: 'Demo',
-          lastName: 'User',
-          address: {
-            street: 'Demo Street',
-            number: '123',
-            postalCode: '1000',
-            municipality: 'Brussels',
-            province: 'Brussels',
-            region: 'brussels'
-          },
-          propertyType: 'house',
-          renovationScale: 'house',
-          timeline: 'this-year',
-          createdAt: new Date(),
-          lastLoginAt: new Date()
+      // Authenticate with Strapi
+      const response = await $fetch(`${strapiBaseUrl}/api/auth/local`, {
+        method: 'POST',
+        body: {
+          identifier: email,
+          password: password
         }
-        
-        currentUser.value = mockUser
-        isAuthenticated.value = true
-        
-        // Store in localStorage
-        if (process.client) {
-          localStorage.setItem('auth_token', 'mock_token_123')
-          localStorage.setItem('user_data', JSON.stringify(mockUser))
-        }
-        
-        // Redirect to dashboard
-        await navigateTo('/dashboard')
-      } else {
-        throw new Error('Invalid email or password')
+      })
+      
+      // Convert Strapi user to our User format
+      const strapiUser = response.user
+      const transformedUser: User = {
+        id: strapiUser.id.toString(),
+        email: strapiUser.email,
+        username: strapiUser.username,
+        firstName: strapiUser.firstName,
+        lastName: strapiUser.lastName,
+        phone: strapiUser.phone,
+        userPhase: strapiUser.userPhase || 'onboarding',
+        createdAt: new Date(strapiUser.createdAt),
+        updatedAt: new Date(strapiUser.updatedAt)
       }
-    } catch (error) {
-      authError.value = error instanceof Error ? error.message : 'Login failed'
-      throw error
+      
+      currentUser.value = transformedUser
+      isAuthenticated.value = true
+      
+      // Store in localStorage
+      if (process.client) {
+        localStorage.setItem('auth_token', response.jwt)
+        localStorage.setItem('user_data', JSON.stringify(transformedUser))
+      }
+      
+      // Redirect based on user phase
+      const userPhase = transformedUser.userPhase || 'onboarding'
+      console.log('🚀 Login successful - User phase:', userPhase, 'User data:', transformedUser)
+      
+      if (userPhase === 'onboarding') {
+        console.log('📝 Redirecting to onboarding...')
+        await navigateTo('/onboarding')
+      } else if (userPhase === 'project-setup') {
+        console.log('🏗️ Redirecting to builder...')
+        await navigateTo('/builder')
+      } else {
+        console.log('📊 Redirecting to dashboard...')
+        await navigateTo('/dashboard')
+      }
+    } catch (error: any) {
+      let errorMessage = 'Login failed'
+      
+      if (error.data?.error?.message) {
+        errorMessage = error.data.error.message
+      } else if (error.statusCode === 400) {
+        errorMessage = 'Invalid email or password'
+      } else if (error.statusCode === 429) {
+        errorMessage = 'Too many login attempts. Please try again later.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      authError.value = errorMessage
+      throw new Error(errorMessage)
     } finally {
       isLoading.value = false
     }
@@ -120,37 +130,64 @@ export const useAuth = () => {
     authError.value = null
     
     try {
-      // TODO: Replace with actual Strapi registration
-      // For now, simulate registration
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Get Strapi base URL from runtime config
+      const config = useRuntimeConfig()
+      const strapiBaseUrl = config.public.strapiBaseUrl
       
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        address: data.address,
-        propertyType: data.propertyType,
-        renovationScale: data.renovationScale,
-        timeline: data.timeline,
-        createdAt: new Date(),
-        lastLoginAt: new Date()
+      // Register with Strapi - only send core auth fields
+      // userPhase will default to 'onboarding', firstName/lastName will be set during onboarding
+      const response = await $fetch(`${strapiBaseUrl}/api/auth/local/register`, {
+        method: 'POST',
+        body: {
+          username: data.email, // Use email as username
+          email: data.email,
+          password: data.password
+        }
+      })
+      
+      // Convert Strapi user to our User format
+      const strapiUser = response.user
+      const transformedUser: User = {
+        id: strapiUser.id.toString(),
+        email: strapiUser.email,
+        username: strapiUser.username,
+        firstName: strapiUser.firstName,
+        lastName: strapiUser.lastName,
+        phone: strapiUser.phone,
+        userPhase: strapiUser.userPhase || 'onboarding',
+        createdAt: new Date(strapiUser.createdAt),
+        updatedAt: new Date(strapiUser.updatedAt)
       }
       
-      currentUser.value = newUser
+      currentUser.value = transformedUser
       isAuthenticated.value = true
       
       // Store in localStorage
       if (process.client) {
-        localStorage.setItem('auth_token', `mock_token_${newUser.id}`)
-        localStorage.setItem('user_data', JSON.stringify(newUser))
+        localStorage.setItem('auth_token', response.jwt)
+        localStorage.setItem('user_data', JSON.stringify(transformedUser))
       }
       
-      // Redirect to project setup
-      await navigateTo('/project/setup')
-    } catch (error) {
-      authError.value = error instanceof Error ? error.message : 'Registration failed'
-      throw error
+      // Redirect to onboarding
+      await navigateTo('/onboarding')
+    } catch (error: any) {
+      let errorMessage = 'Registration failed'
+      
+      if (error.data?.error?.message) {
+        errorMessage = error.data.error.message
+      } else if (error.statusCode === 400) {
+        const details = error.data?.error?.details
+        if (details?.errors?.length > 0) {
+          errorMessage = details.errors[0].message
+        } else {
+          errorMessage = 'Please check your registration details'
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      authError.value = errorMessage
+      throw new Error(errorMessage)
     } finally {
       isLoading.value = false
     }
@@ -161,9 +198,8 @@ export const useAuth = () => {
     isLoading.value = true
     
     try {
-      // TODO: Call Strapi logout endpoint
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
+      // Note: Strapi doesn't have a specific logout endpoint since JWT tokens are stateless
+      // We just need to clear the client-side data
       clearAuth()
       
       // Redirect to login
@@ -181,40 +217,41 @@ export const useAuth = () => {
   // Check if user needs to complete profile
   const needsProfileCompletion = computed(() => {
     return currentUser.value && (
-      !currentUser.value.address?.street ||
-      !currentUser.value.propertyType ||
-      !currentUser.value.renovationScale ||
-      !currentUser.value.timeline
+      !currentUser.value.firstName ||
+      !currentUser.value.lastName ||
+      currentUser.value.userPhase === 'onboarding'
     )
   })
   
-  // Get user's Belgian region information
-  const getUserRegion = computed(() => {
-    if (!currentUser.value?.address?.region) return null
+  // Fetch user profile with userPhase from Strapi Users
+  const fetchUserProfile = async () => {
+    if (!currentUser.value?.id) return null
     
-    const regionInfo = {
-      flanders: {
-        name: 'Flanders',
-        energyStandard: 'EPB',
-        gasBan: null,
-        maxERate: null
-      },
-      brussels: {
-        name: 'Brussels-Capital Region',
-        energyStandard: '45 kWh/m² for houses',
-        gasBan: '2025-01-01',
-        maxERate: 45
-      },
-      wallonia: {
-        name: 'Wallonia',
-        energyStandard: '80 kWh/m²',
-        gasBan: null,
-        maxERate: 80
+    try {
+      const config = useRuntimeConfig()
+      const strapiBaseUrl = config.public.strapiBaseUrl
+      const token = process.client ? localStorage.getItem('auth_token') : null
+      
+      const response = await $fetch(`${strapiBaseUrl}/api/users/${currentUser.value.id}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      
+      if (response) {
+        return {
+          userPhase: response.userPhase || 'onboarding',
+          firstName: response.firstName,
+          lastName: response.lastName,
+          phone: response.phone,
+          email: response.email
+        }
       }
+    } catch (error) {
+      console.warn('Failed to fetch user profile:', error)
     }
     
-    return regionInfo[currentUser.value.address.region as keyof typeof regionInfo]
-  })
+    return null
+  }
+
   
   return {
     // State
@@ -225,13 +262,13 @@ export const useAuth = () => {
     
     // Computed
     needsProfileCompletion,
-    getUserRegion,
     
     // Actions
     initializeAuth,
     login,
     register,
     logout,
-    clearAuth
+    clearAuth,
+    fetchUserProfile
   }
 }

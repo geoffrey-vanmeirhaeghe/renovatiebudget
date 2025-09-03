@@ -98,7 +98,115 @@ This stores email addresses from users who want to be notified when various plat
 **Authenticated** (if you want authenticated users to also sign up):
 - ✅ **Information-inquiry**: find, findOne, create
 
-## Step 6: Test
+## Step 6: Create User Profile Content Type
+
+This stores basic user information collected during onboarding.
+
+1. **Content-Type Builder** → **Collection Types** → **Create new collection type**
+2. Display name: `User Profile`
+3. API ID: `user-profile`
+
+### Add These Fields:
+
+**Personal Info:**
+- `firstName` (Text, Short text, Required, Max: 100)
+- `lastName` (Text, Short text, Required, Max: 100)
+- `phone` (Text, Short text, Max: 20)
+- `preferredLanguage` (Enumeration: nl/fr/en/de, Default: en)
+- `notificationPreferences` (JSON, Optional - for future notification settings)
+- `hasCompletedOnboarding` (Boolean, Default: false)
+
+**Relation:**
+- `user` (Relation, One to One, plugin::users-permissions.user)
+
+## Step 7: Create Project Content Type
+
+This stores project and property information. Each user can have multiple projects.
+
+1. **Content-Type Builder** → **Collection Types** → **Create new collection type**
+2. Display name: `Project`
+3. API ID: `project`
+
+### Add These Fields:
+
+**Project Info:**
+- `ProjectID` (UID, Required - auto-generated unique identifier)
+- `ProjectName` (Text, Short text, Required, Max: 200)
+- `Description` (Text, Long text, Max: 1000)
+
+**Property Address:**
+- `PropertyAddress` (JSON, Required - stores full address object with street, number, postalCode, municipality, region)
+
+**Property Details:**
+- `PropertyType` (Enumeration: house/apartment/townhouse/studio/loft/commercial/mixed-use/other, Required)
+- `PropertyOwnership` (Enumeration: owner/renter/looking-to-buy/investor, Required)
+- `PropertySize` (Number, Integer - property size in m²)
+- `YearBuilt` (Number, Integer, Min: 1800, Max: 2025)
+
+**Renovation Plans:**
+- `RenovationScope` (Enumeration: complete-renovation/partial-renovation/single-room/cosmetic-updates/maintenance/extension/energy-upgrade, Required)
+- `ProjectTimeline` (Enumeration: immediate/this-quarter/this-year/next-year/2-3-years/planning-phase, Required)
+- `EstimatedBudget` (Enumeration: under-10k/10k-25k/25k-50k/50k-100k/100k-200k/200k-500k/over-500k/not-determined)
+- `ActualBudget` (Number, Decimal - actual budget in EUR)
+- `ProjectInterests` (JSON - array of renovation interests for this project)
+
+**Project Status:**
+- `ProjectStatus` (Enumeration: planning/design-phase/permit-pending/in-progress/on-hold/completed/cancelled, Default: planning)
+- `StartDate` (Date)
+- `CompletionDate` (Date)
+- `IsPrimary` (Boolean, Default: false - is this the user's active project)
+
+**3D & Technical:**
+- `GeneralAttributes` (JSON - 3D model general attributes)
+- `Notes` (Rich text)
+
+**Relations:**
+- `user` (Relation, Many to One, plugin::users-permissions.user)
+- `building` (Relation, One to One, api::building.building)
+- `renovationWorks` (Relation, One to Many, api::renovation-work.renovation-work, mappedBy: project)
+
+## Step 8: Set Final Permissions
+
+**Settings** → **Users & Permissions** → **Roles**:
+
+**Authenticated:**
+- ✅ **User-profile**: find, findOne, create, update (users manage their own profiles)
+- Keep all other authenticated permissions from previous steps
+
+## Step 9: Test
+
+### Test User Profile:
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "phone": "+32 123 456 789",
+  "preferredLanguage": "en",
+  "hasCompletedOnboarding": true
+}
+```
+
+### Test Project:
+```json
+{
+  "ProjectName": "Kitchen Renovation",
+  "Description": "Complete kitchen makeover with new cabinets and appliances",
+  "PropertyAddress": {
+    "street": "Rue de la Loi",
+    "number": "42",
+    "postalCode": "1000",
+    "municipality": "Brussels",
+    "region": "brussels"
+  },
+  "PropertyType": "apartment",
+  "PropertyOwnership": "owner",
+  "RenovationScope": "single-room",
+  "ProjectTimeline": "this-quarter",
+  "EstimatedBudget": "25k-50k",
+  "ProjectInterests": ["kitchen", "energy-efficiency"],
+  "IsPrimary": true
+}
+```
 
 ### Test Renovation Work:
 ```json
@@ -130,4 +238,19 @@ This stores email addresses from users who want to be notified when various plat
 - `project-planning`
 - `building-permits`
 
-That's it! You now have both renovation work management and flexible email lead capture for all your future platform features.
+## Data Architecture Summary
+
+The new structure separates concerns properly:
+
+**User Profile**: Personal information only (name, phone, language preferences)
+**Projects**: Property details, renovation plans, and project-specific information
+**Renovation Works**: Individual renovation tasks within projects
+**Information Inquiries**: Lead capture for future features
+
+This allows:
+- Users to have multiple projects
+- Each project to have its own property details and renovation scope
+- Proper separation of user data vs project data
+- Scalable architecture for future features
+
+That's it! You now have a properly structured system with user profiles, project management, renovation work tracking, and flexible email lead capture for all your future platform features.

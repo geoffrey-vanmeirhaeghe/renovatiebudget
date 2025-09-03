@@ -1,16 +1,14 @@
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
-  address: BelgianAddress
-  propertyType: PropertyType
-  renovationScale: RenovationScale
-  timeline: Timeline
-  createdAt: Date
-  lastLoginAt: Date
-  avatar?: string
+  username: string
+  firstName?: string
+  lastName?: string
   phone?: string
+  userPhase?: 'onboarding' | 'project-setup' | 'onboarded'
+  createdAt: Date
+  updatedAt: Date
+  avatar?: string
   preferences?: UserPreferences
 }
 

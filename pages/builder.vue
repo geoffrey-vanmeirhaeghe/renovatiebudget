@@ -37,21 +37,33 @@
       
       <!-- Actions Handler (modals, confirmations, etc.) -->
       <PropertyPanelActions ref="actionsHandler" />
+      
+      <!-- Guided Onboarding Overlay -->
+      <BuilderGuide 
+        v-if="showGuide"
+        @house-completed="onHouseCompleted"
+        @guide-cancelled="onGuideCancelled"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: ['auth', 'onboarding']
+})
+
 import SimpleMenu from '~/components/ui/SimpleMenu.vue'
 import CategoryButtons from '~/components/ui/CategoryButtons.vue'
 import SidePanel from '~/components/ui/SidePanel.vue'
 import PropertyPanelActions from '~/components/ui/PropertyPanelActions.vue'
 import House from '~/components/renderings/house.vue'
 import ToolTooltip from '~/components/ui/ToolTooltip.vue'
+import BuilderGuide from '~/components/onboarding/BuilderGuide.vue'
 
-// Protect this page with authentication
+// Protect this page with authentication and onboarding checks
 definePageMeta({
-  middleware: 'auth'
+  middleware: ['auth', 'onboarding']
 })
 
 interface ToolItem {
@@ -62,10 +74,14 @@ interface ToolItem {
 }
 
 // Get authentication state
-const { currentUser, getUserRegion, logout } = useAuth()
+const { currentUser, getUserRegion, logout, fetchUserProfile } = useAuth()
 
 // Get project data
 const { currentProject, loadProject } = useProject()
+
+// User phase detection for guided onboarding
+const userPhase = ref<string>('')
+const showGuide = ref(false)
 
 // Tool and category management for 3D mode
 const selectedCategory = ref<string | null>('layout') // Default to layout category
@@ -145,31 +161,183 @@ const handleElementAction = (action: string, data?: any) => {
   }
 }
 
+// Handle guided house creation completion
+const onHouseCompleted = async (houseConfiguration: any) => {
+  try {
+    console.log('🏠 House completed with configuration:', houseConfiguration)
+    
+    // Create new project from guided configuration
+    const newProject = createProjectFromGuide(houseConfiguration)
+    
+    // Load the new project into the builder
+    const { updateProject } = useProject()
+    await updateProject(newProject)
+    
+    // Update user phase to 'onboarded' using the same approach as onboarding completion
+    try {
+      const token = useCookie('auth-token')
+      const config = useRuntimeConfig()
+      
+      await $fetch(`${config.public.strapi.baseURL}/api/users/me`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+          'Content-Type': 'application/json'
+        },
+        body: {
+          userPhase: 'onboarded'
+        }
+      })
+      
+      userPhase.value = 'onboarded'
+      console.log('✅ User phase updated to onboarded')
+    } catch (error) {
+      console.warn('Could not update user phase:', error)
+    }
+    
+    // Hide the guide and show regular builder
+    showGuide.value = false
+    
+    console.log('✅ House creation completed successfully!')
+  } catch (error) {
+    console.error('Error completing house creation:', error)
+  }
+}
+
+// Handle guide cancellation
+const onGuideCancelled = () => {
+  console.log('❌ House creation guide cancelled')
+  showGuide.value = false
+}
+
+// Create a project from guided configuration
+const createProjectFromGuide = (config: any) => {
+  const baseProject = {
+    id: `guided-${Date.now()}`,
+    name: 'My House Project',
+    description: 'Created through guided onboarding',
+    generalAttributes: {
+      propertySize: {
+        width: config.propertySize.width,
+        depth: config.propertySize.depth
+      },
+      floorSize: {
+        width: config.propertySize.width - 100, // Leave some margin
+        depth: config.propertySize.depth - 100
+      }
+    },
+    floors: {},
+    roof: null
+  }
+
+  // Add floors from configuration
+  for (let i = 0; i < config.floorCount; i++) {
+    const floorId = `floor-${i}`
+    baseProject.floors[floorId] = {
+      id: floorId,
+      storey: i,
+      height: config.floorHeight || 280,
+      heightPosition: i * (config.floorHeight || 280),
+      positionX: 0,
+      positionZ: 0,
+      doors: {},
+      windows: {}
+    }
+  }
+
+  // Add roof if configured
+  if (config.roof && config.roof.type !== 'none') {
+    baseProject.roof = {
+      type: config.roof.type,
+      height: 200,
+      width: config.propertySize.width,
+      depth: config.propertySize.depth,
+      positionX: 0,
+      positionZ: 0
+    }
+  }
+
+  return baseProject
+}
+
 // Load project data on mount
 onMounted(async () => {
   try {
     const { loadProject } = useProject()
     console.log('🏗️ Loading 3D builder with user context')
-    console.log('User:', currentUser.value?.firstName, currentUser.value?.address?.municipality)
+    console.log('User:', currentUser.value?.firstName)
     
-    // Load project data (fallback to mock if Strapi unavailable)
-    await loadProject('ca66f5looy2mij5rua9yj987', true)
+    // Check user phase to determine if we need guided onboarding
+    const userProfile = await fetchUserProfile()
+    userPhase.value = userProfile?.userPhase || ''
+    
+    if (userProfile?.userPhase === 'project-setup') {
+      console.log('🏠 New user in project setup - showing guided onboarding')
+      
+      // Create a completely empty project for guided onboarding
+      const { updateProject } = useProject()
+      const emptyProject = {
+        id: `empty-${Date.now()}`,
+        name: 'New House Project',
+        description: 'Building your first house',
+        generalAttributes: {
+          propertySize: {
+            width: 1600,
+            depth: 1400
+          },
+          floorSize: {
+            width: 1500,
+            depth: 1300
+          }
+        },
+        floors: {},
+        roof: null
+      }
+      
+      updateProject(emptyProject)
+      console.log('📝 Created empty project for guided onboarding:', emptyProject)
+      
+      // Show the guided onboarding
+      showGuide.value = true
+      console.log('✨ Guided onboarding activated')
+    } else {
+      console.log('👤 Existing user - loading regular builder')
+      // Load project data (fallback to mock if Strapi unavailable)
+      try {
+        await loadProject('ca66f5looy2mij5rua9yj987', true)
+      } catch (strapiError) {
+        console.error('Failed to load Strapi data, falling back to mock data:', strapiError)
+        await loadProject()
+      }
+      
+      // Set layout category as active by default for regular users
+      const layoutTools: ToolItem[] = [
+        { id: 'add-floor', name: 'Add Floor', icon: '🏢', action: 'addFloor' },
+        { id: 'add-window', name: 'Add Window', icon: '🪟', action: 'addWindow' },
+        { id: 'add-door', name: 'Add Door', icon: '🚪', action: 'addDoor' },
+        { id: 'edit-walls', name: 'Edit Walls', icon: '🧱', action: 'editWalls' },
+        { id: 'room-config', name: 'Room Configuration', icon: '📐', action: 'roomConfig' },
+        { id: 'clear-house', name: 'Clear House', icon: '🧹', action: 'clearHouse' }
+      ]
+      selectedCategoryTools.value = layoutTools
+    }
   } catch (error) {
-    console.error('Failed to load Strapi data, falling back to mock data:', error)
+    console.error('Error in builder setup:', error)
+    // Final fallback - ensure we have a project
     const { loadProject } = useProject()
     await loadProject()
+    
+    // Default to regular UI on error
+    const layoutTools: ToolItem[] = [
+      { id: 'add-floor', name: 'Add Floor', icon: '🏢', action: 'addFloor' },
+      { id: 'add-window', name: 'Add Window', icon: '🪟', action: 'addWindow' },
+      { id: 'add-door', name: 'Add Door', icon: '🚪', action: 'addDoor' },
+      { id: 'edit-walls', name: 'Edit Walls', icon: '🧱', action: 'editWalls' },
+      { id: 'room-config', name: 'Room Configuration', icon: '📐', action: 'roomConfig' },
+      { id: 'clear-house', name: 'Clear House', icon: '🧹', action: 'clearHouse' }
+    ]
+    selectedCategoryTools.value = layoutTools
   }
-  
-  // Set layout category as active by default
-  const layoutTools: ToolItem[] = [
-    { id: 'add-floor', name: 'Add Floor', icon: '🏢', action: 'addFloor' },
-    { id: 'add-window', name: 'Add Window', icon: '🪟', action: 'addWindow' },
-    { id: 'add-door', name: 'Add Door', icon: '🚪', action: 'addDoor' },
-    { id: 'edit-walls', name: 'Edit Walls', icon: '🧱', action: 'editWalls' },
-    { id: 'room-config', name: 'Room Configuration', icon: '📐', action: 'roomConfig' },
-    { id: 'clear-house', name: 'Clear House', icon: '🧹', action: 'clearHouse' }
-  ]
-  selectedCategoryTools.value = layoutTools
 })
 </script>
 

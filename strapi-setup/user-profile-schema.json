@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_profiles",
+  "info": {
+    "singularName": "user-profile",
+    "pluralName": "user-profiles",
+    "displayName": "User Profile",
+    "description": "Basic user profile information"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "firstName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "lastName": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "phone": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "preferredLanguage": {
+      "type": "enumeration",
+      "enum": [
+        "nl",
+        "fr",
+        "en",
+        "de"
+      ],
+      "default": "en"
+    },
+    "notificationPreferences": {
+      "type": "json",
+      "description": "User notification settings"
+    },
+    "userPhase": {
+      "type": "enumeration",
+      "enum": [
+        "onboarding",
+        "setup-project",
+        "onboarded"
+      ],
+      "default": "onboarding",
+      "required": true,
+      "description": "Current user onboarding phase"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

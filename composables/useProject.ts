@@ -7,7 +7,7 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 
 export const useProject = () => {
-  const { loadProject: loadStrapiProject } = useStrapi()
+  const { loadProject: loadStrapiProject, saveProject: saveStrapiProject } = useStrapi()
   
   const loadProject = async (projectId?: string, useStrapi = false, mockScenario?: 1 | 2 | 3): Promise<void> => {
     isLoading.value = true
@@ -68,6 +68,24 @@ export const useProject = () => {
     }
   }
 
+  const saveProject = async (project: Omit<Project, 'id'> | Project): Promise<Project> => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      // Use Strapi saveProject function
+      const savedProject = await saveStrapiProject(project as Project)
+      currentProject.value = savedProject
+      return savedProject
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to save project'
+      console.error('Error saving project:', err)
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     currentProject: readonly(currentProject),
     isLoading: readonly(isLoading),
@@ -75,5 +93,6 @@ export const useProject = () => {
     loadProject,
     updateProject,
     updateProjectAsync,
+    saveProject
   }
 }
