@@ -124,43 +124,6 @@
                 </div>
               </div>
 
-              <!-- Financing -->
-              <div class="section">
-                <h3 class="section-title">Financing</h3>
-                <div class="form-grid">
-                  <div class="form-field">
-                    <label class="form-label">
-                      <input 
-                        v-model="formData.financing.secured"
-                        type="checkbox"
-                        class="form-checkbox"
-                      />
-                      Financing secured
-                    </label>
-                  </div>
-                  <div class="form-field" v-if="formData.financing.secured">
-                    <label class="form-label" for="financingType">Financing Type</label>
-                    <input 
-                      id="financingType"
-                      v-model="formData.financing.type"
-                      type="text"
-                      placeholder="e.g., Personal savings, Bank loan, Green loan"
-                      class="form-input"
-                    />
-                  </div>
-                </div>
-                <div class="form-field" v-if="formData.financing.secured">
-                  <label class="form-label" for="financingAmount">Financing Amount (EUR)</label>
-                  <input 
-                    id="financingAmount"
-                    v-model="formData.financing.amount"
-                    type="number"
-                    min="0"
-                    step="100"
-                    class="form-input"
-                  />
-                </div>
-              </div>
             </form>
           </div>
 
@@ -200,11 +163,6 @@ const formData = ref({
   executionType: 'DIY' as ExecutionType,
   timeline: 'now' as TimelineType,
   year: currentYear,
-  financing: {
-    secured: false,
-    type: '',
-    amount: 0
-  }
 })
 
 // Computed properties
@@ -230,8 +188,7 @@ const handleSubmit = () => {
 
   const workData: Partial<RenovationWork> = {
     ...formData.value,
-    canActivate: formData.value.status === 'planned',
-    financing: formData.value.financing.secured ? formData.value.financing : undefined
+    canActivate: formData.value.status === 'planned'
   }
 
   emit('create', workData)
@@ -252,11 +209,6 @@ const resetForm = () => {
     executionType: 'DIY' as ExecutionType,
     timeline: 'now' as TimelineType,
     year: currentYear,
-    financing: {
-      secured: false,
-      type: '',
-      amount: 0
-    }
   }
 }
 

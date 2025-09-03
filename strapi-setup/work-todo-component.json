@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_work_todos",
+  "info": {
+    "displayName": "Todo",
+    "description": "Simple todo items for renovation work",
+    "icon": "check"
+  },
+  "options": {},
+  "attributes": {
+    "text": {
+      "type": "string",
+      "required": true,
+      "maxLength": 500
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    }
+  }
+}

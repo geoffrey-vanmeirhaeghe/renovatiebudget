@@ -1,0 +1,114 @@
+{
+  "info": {
+    "description": "Extension fields to add to the default users-permissions User content type for Belgian renovation platform",
+    "note": "These fields should be added to the existing User content type in Strapi Admin Panel"
+  },
+  "additionalAttributes": {
+    "firstName": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "lastName": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "phone": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "address": {
+      "type": "json",
+      "default": {
+        "street": "",
+        "number": "",
+        "box": "",
+        "postalCode": "",
+        "city": "",
+        "province": "",
+        "country": "Belgium"
+      }
+    },
+    "userType": {
+      "type": "enumeration",
+      "enum": ["homeowner", "contractor", "admin"],
+      "default": "homeowner",
+      "required": true
+    },
+    "preferences": {
+      "type": "json",
+      "default": {
+        "language": "nl",
+        "notifications": {
+          "email": true,
+          "sms": false,
+          "push": true
+        },
+        "units": "metric"
+      }
+    },
+    "profileImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "isVerified": {
+      "type": "boolean",
+      "default": false
+    },
+    "lastLoginAt": {
+      "type": "datetime"
+    }
+  },
+  "contractorSpecificFields": {
+    "note": "These fields should only be visible/required when userType is 'contractor'",
+    "companyName": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "vat": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "businessAddress": {
+      "type": "json",
+      "default": {
+        "street": "",
+        "number": "",
+        "box": "",
+        "postalCode": "",
+        "city": "",
+        "province": "",
+        "country": "Belgium"
+      }
+    },
+    "specialties": {
+      "type": "json",
+      "default": []
+    },
+    "serviceRadius": {
+      "type": "integer",
+      "default": 50,
+      "min": 1,
+      "max": 200
+    },
+    "rating": {
+      "type": "decimal",
+      "default": 0,
+      "min": 0,
+      "max": 5
+    },
+    "reviewCount": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "isApproved": {
+      "type": "boolean",
+      "default": false
+    },
+    "approvedAt": {
+      "type": "datetime"
+    }
+  }
+}

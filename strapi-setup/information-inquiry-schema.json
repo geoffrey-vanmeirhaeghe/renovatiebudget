@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "information_inquiries",
+  "info": {
+    "singularName": "information-inquiry",
+    "pluralName": "information-inquiries",
+    "displayName": "Information Inquiry",
+    "description": "Email addresses from users requesting information about various platform features"
+  },
+  "options": {
+    "draftAndPublish": false,
+    "timestamps": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "email": {
+      "type": "email",
+      "required": true,
+      "unique": true,
+      "description": "Email address for feature notifications"
+    },
+    "topic": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100,
+      "description": "Topic of interest (contractor-marketplace, cost-estimation, etc.)"
+    },
+    "notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this email has been notified about the requested feature"
+    },
+    "userData": {
+      "type": "json",
+      "description": "Optional user context data (user ID, project info, etc.)"
+    },
+    "notes": {
+      "type": "text",
+      "description": "Admin notes about this inquiry"
+    }
+  }
+}

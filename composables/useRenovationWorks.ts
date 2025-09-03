@@ -247,39 +247,21 @@ export const useRenovationWorks = () => {
     state.value.works = mockWorks
   }
 
-  const loadWorks = async (projectId?: string) => {
+  const loadWorks = async (userId?: string) => {
     state.value.loading = true
     state.value.error = null
 
     try {
-      const config = useRuntimeConfig()
-      const strapiUrl = config.public.strapiBaseUrl
-
-      if (strapiUrl && projectId) {
-        console.log('🔄 Attempting to load renovation works from Strapi...')
-        
-        const response = await $fetch(`${strapiUrl}/api/renovation-works`, {
-          params: {
-            'filters[project][id][$eq]': projectId,
-            'populate': '*'
-          }
-        }).catch((error) => {
-          console.warn('⚠️ Strapi renovation-works endpoint not available, using mock data')
-          throw error
-        })
-
-        if (response && response.data) {
-          console.log('✅ Loaded renovation works from Strapi')
-          state.value.works = transformStrapiWorks(response.data)
-          return
-        }
-      }
+      const { fetchUserRenovationWorks } = useStrapi()
+      const works = await fetchUserRenovationWorks(userId)
+      state.value.works = works
+      console.log(`✅ Loaded ${works.length} renovation works from Strapi`)
     } catch (error) {
-      console.log('📦 Using mock renovation works data')
+      console.log('📦 Failed to load from Strapi, using mock data:', error)
+      initializeMockData()
+    } finally {
+      state.value.loading = false
     }
-
-    initializeMockData()
-    state.value.loading = false
   }
 
   const transformStrapiWorks = (strapiData: any[]): RenovationWork[] => {
@@ -316,33 +298,26 @@ export const useRenovationWorks = () => {
     if (!work || !work.canActivate) return false
 
     try {
-      const config = useRuntimeConfig()
-      const strapiUrl = config.public.strapiBaseUrl
-
-      if (strapiUrl) {
-        await $fetch(`${strapiUrl}/api/renovation-works/${workId}`, {
-          method: 'PUT',
-          body: {
-            data: {
-              status: 'active',
-              canActivate: false,
-              startDate: new Date()
-            }
-          }
-        }).catch(() => {
-          console.log('📦 Updating mock data locally')
-        })
+      const { updateRenovationWork } = useStrapi()
+      const updates = {
+        status: 'active',
+        canActivate: false,
+        startDate: new Date()
       }
+      
+      await updateRenovationWork(workId, updates)
+      
+      // Update local state
+      work.status = 'active'
+      work.canActivate = false
+      work.startDate = new Date()
+      work.updatedAt = new Date()
+      
+      return true
     } catch (error) {
-      console.log('📦 Updating mock data locally')
+      state.value.error = 'Failed to activate work'
+      return false
     }
-
-    work.status = 'active'
-    work.canActivate = false
-    work.startDate = new Date()
-    work.updatedAt = new Date()
-
-    return true
   }
 
   const deactivateWork = async (workId: string) => {
@@ -350,33 +325,26 @@ export const useRenovationWorks = () => {
     if (!work || work.status !== 'active') return false
 
     try {
-      const config = useRuntimeConfig()
-      const strapiUrl = config.public.strapiBaseUrl
-
-      if (strapiUrl) {
-        await $fetch(`${strapiUrl}/api/renovation-works/${workId}`, {
-          method: 'PUT',
-          body: {
-            data: {
-              status: 'planned',
-              canActivate: true,
-              startDate: null
-            }
-          }
-        }).catch(() => {
-          console.log('📦 Updating mock data locally')
-        })
+      const { updateRenovationWork } = useStrapi()
+      const updates = {
+        status: 'planned',
+        canActivate: true,
+        startDate: null
       }
+      
+      await updateRenovationWork(workId, updates)
+      
+      // Update local state
+      work.status = 'planned'
+      work.canActivate = true
+      work.startDate = undefined
+      work.updatedAt = new Date()
+      
+      return true
     } catch (error) {
-      console.log('📦 Updating mock data locally')
+      state.value.error = 'Failed to deactivate work'
+      return false
     }
-
-    work.status = 'planned'
-    work.canActivate = true
-    work.startDate = undefined
-    work.updatedAt = new Date()
-
-    return true
   }
 
   const updateWorkProgress = async (workId: string, progress: number, description?: string) => {
@@ -420,80 +388,67 @@ export const useRenovationWorks = () => {
 
 
   const createWork = async (workData: Partial<RenovationWork>) => {
-    const newWork: RenovationWork = {
-      id: `work-${Date.now()}`,
-      name: workData.name || 'New Work',
-      description: workData.description,
-      budget: workData.budget || 0,
-      status: workData.status || 'planned',
-      executionType: workData.executionType || 'DIY',
-      timeline: workData.timeline || 'Q1',
-      year: workData.year || new Date().getFullYear() + 1,
-      todos: [],
-      documents: [],
-      progressUpdates: [],
-      costLines: [],
-      progress: 0,
-      progressDescription: 'No tasks yet',
-      canActivate: workData.status === 'planned',
-      contractor: {
-        name: '',
-        phone: '',
-        email: '',
-        contractSigned: false
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...workData
-    }
-
     try {
-      const config = useRuntimeConfig()
-      const strapiUrl = config.public.strapiBaseUrl
-
-      if (strapiUrl) {
-        const response = await $fetch(`${strapiUrl}/api/renovation-works`, {
-          method: 'POST',
-          body: {
-            data: newWork
-          }
-        }).catch(() => {
-          console.log('📦 Creating work in mock data')
-          return null
-        })
-
-        if (response && response.data) {
-          const transformedWork = transformStrapiWorks([response.data])[0]
-          state.value.works.push(transformedWork)
-          return transformedWork
-        }
-      }
+      const { createRenovationWork } = useStrapi()
+      const newWork = await createRenovationWork({
+        ...workData,
+        // TODO: Get actual user ID when auth is ready
+        userId: undefined,
+        // TODO: Get actual project ID when project integration is ready
+        projectId: undefined
+      })
+      
+      state.value.works.push(newWork)
+      return newWork
     } catch (error) {
-      console.log('📦 Creating work in mock data')
+      state.value.error = 'Failed to create work'
+      console.log('📦 Failed to create work in Strapi, creating locally:', error)
+      
+      // Fallback to local creation
+      const localWork: RenovationWork = {
+        id: `work-${Date.now()}`,
+        name: workData.name || 'New Work',
+        description: workData.description,
+        budget: workData.budget || 0,
+        status: workData.status || 'planned',
+        executionType: workData.executionType || 'DIY',
+        timeline: workData.timeline || 'now',
+        year: workData.year || new Date().getFullYear(),
+        todos: [],
+        attachments: [],
+        progressUpdates: [],
+        progress: 0,
+        canActivate: workData.status === 'planned',
+        contractor: {
+          name: '',
+          phone: '',
+          email: ''
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      
+      state.value.works.push(localWork)
+      return localWork
     }
-
-    state.value.works.push(newWork)
-    return newWork
   }
 
   const deleteWork = async (workId: string) => {
     try {
-      const config = useRuntimeConfig()
-      const strapiUrl = config.public.strapiBaseUrl
-
-      if (strapiUrl) {
-        await $fetch(`${strapiUrl}/api/renovation-works/${workId}`, {
-          method: 'DELETE'
-        }).catch(() => {
-          console.log('📦 Deleting from mock data')
-        })
-      }
+      const { deleteRenovationWork } = useStrapi()
+      await deleteRenovationWork(workId)
+      
+      // Update local state
+      state.value.works = state.value.works.filter(w => w.id !== workId)
+      return true
     } catch (error) {
-      console.log('📦 Deleting from mock data')
+      state.value.error = 'Failed to delete work'
+      console.log('📦 Failed to delete from Strapi:', error)
+      
+      // Still remove from local state as fallback
+      state.value.works = state.value.works.filter(w => w.id !== workId)
+      return true
     }
-
-    state.value.works = state.value.works.filter(w => w.id !== workId)
-    return true
   }
 
   // Todo management functions
@@ -502,29 +457,28 @@ export const useRenovationWorks = () => {
     if (workIndex === -1) return false
 
     try {
-      const config = useRuntimeConfig()
-      const strapiUrl = config.public.strapiBaseUrl
-
-      if (strapiUrl) {
-        await $fetch(`${strapiUrl}/api/renovation-works/${workId}`, {
-          method: 'PUT',
-          body: {
-            data: updatedWork
-          }
-        }).catch(() => {
-          console.log('📦 Updating work in mock data')
-        })
+      const { updateRenovationWork } = useStrapi()
+      await updateRenovationWork(workId, updatedWork)
+      
+      // Update local state
+      state.value.works[workIndex] = {
+        ...updatedWork,
+        updatedAt: new Date()
       }
+      
+      return true
     } catch (error) {
-      console.log('📦 Updating work in mock data')
+      state.value.error = 'Failed to update work'
+      console.log('📦 Failed to update in Strapi, updating locally:', error)
+      
+      // Update local state as fallback
+      state.value.works[workIndex] = {
+        ...updatedWork,
+        updatedAt: new Date()
+      }
+      
+      return true
     }
-
-    state.value.works[workIndex] = {
-      ...updatedWork,
-      updatedAt: new Date()
-    }
-
-    return true
   }
 
   const calculateProgress = (todos: WorkTodo[]) => {

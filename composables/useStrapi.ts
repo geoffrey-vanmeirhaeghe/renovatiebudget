@@ -1467,8 +1467,447 @@ export const useStrapi = () => {
     }))
   }
 
+  // Renovation Works API methods
+  const apiCall = async (endpoint: string, options: any = {}) => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+    
+    // TODO: Add authentication when auth system is ready
+    // const { data: user } = await useAuth()
+    // if (user.value?.jwt) {
+    //   headers.Authorization = `Bearer ${user.value.jwt}`
+    // }
+    
+    return await client(endpoint, {
+      ...options,
+      headers
+    })
+  }
+
+  const fetchUserRenovationWorks = async (userId?: string) => {
+    const operation = 'Fetch User Renovation Works'
+    console.log(`🔨 ${operation} - Starting...`)
+    
+    try {
+      // Start with basic endpoint and try to populate everything available
+      let endpoint = '/api/renovation-works?populate=*&sort=createdAt:desc'
+      
+      if (userId) {
+        endpoint += `&filters[user][id][$eq]=${userId}`
+      }
+      
+      console.log(`🔗 API endpoint: ${endpoint}`)
+      
+      const response = await apiCall(endpoint, { method: 'GET' })
+      
+      console.log(`✅ ${operation} - Success:`, {
+        workCount: response.data?.length || 0,
+        sampleData: response.data?.[0] || 'No data'
+      })
+      
+      // Transform data flexibly - handle whatever fields exist
+      return response.data.map((item: any) => {
+        console.log(`🔄 Transforming item:`, item)
+        
+        return {
+          id: item.documentId || item.id,  // Use documentId as primary ID for Strapi v5
+          name: item.Name || item.name || 'Untitled Work',
+          description: item.Description || item.description || '',
+          budget: Number(item.Budget || item.budget || 0),
+          actualCost: item.ActualCost || item.actualCost || undefined,
+          status: (item.ScheduledStatus || item.status || 'planned').toLowerCase(),
+          executionType: item.executionType || 'DIY',
+          timeline: (item.Timeline || item.timeline || 'now').toLowerCase(),
+          year: item.Year || item.year || undefined,
+          progress: Number(item.progress || 0),
+          canActivate: Boolean(item.canActivate || false),
+          contractor: item.Contractor || item.contractor || { name: null, phone: null, email: null },
+          startDate: item.StartDate ? new Date(item.StartDate) : undefined,
+          completedAt: item.CompletedAt ? new Date(item.CompletedAt) : undefined,
+          createdAt: new Date(item.createdAt),
+          updatedAt: new Date(item.updatedAt),
+          todos: Array.isArray(item.todos) ? item.todos : [],
+          attachments: Array.isArray(item.attachments) ? item.attachments : [],
+          projectId: item.project?.data?.id || item.project?.id || undefined
+        }
+      })
+    } catch (error) {
+      console.log(`🔍 Detailed error info:`, {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        status: (error as any)?.status,
+        data: (error as any)?.data
+      })
+      
+      // If populate=* fails, try without populate
+      if ((error as any)?.status === 400) {
+        console.log(`🔄 Retrying without populate...`)
+        try {
+          let fallbackEndpoint = '/api/renovation-works?sort=createdAt:desc'
+          if (userId) {
+            fallbackEndpoint += `&filters[user][id][$eq]=${userId}`
+          }
+          
+          const fallbackResponse = await apiCall(fallbackEndpoint, { method: 'GET' })
+          console.log(`✅ Fallback successful:`, { workCount: fallbackResponse.data?.length || 0 })
+          
+          return fallbackResponse.data.map((item: any) => ({
+            id: item.id || item.documentId,
+            name: item.Name || item.name || 'Untitled Work',
+            description: item.Description || item.description || '',
+            budget: Number(item.Budget || item.budget || 0),
+            actualCost: item.ActualCost || item.actualCost || undefined,
+            status: (item.ScheduledStatus || item.status || 'planned').toLowerCase(),
+            executionType: item.executionType || 'DIY',
+            timeline: (item.Timeline || item.timeline || 'now').toLowerCase(),
+            year: item.Year || item.year || undefined,
+            progress: Number(item.progress || 0),
+            canActivate: Boolean(item.canActivate || false),
+            contractor: item.Contractor || item.contractor || { name: null, phone: null, email: null },
+            startDate: item.StartDate ? new Date(item.StartDate) : undefined,
+            completedAt: item.CompletedAt ? new Date(item.CompletedAt) : undefined,
+            createdAt: new Date(item.createdAt),
+            updatedAt: new Date(item.updatedAt),
+            todos: [],
+            attachments: [],
+            projectId: undefined
+          }))
+        } catch (fallbackError) {
+          logApiError(`${operation} (fallback)`, fallbackError, { userId })
+          throw new Error(`Failed to fetch renovation works: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`)
+        }
+      }
+      
+      logApiError(operation, error, { userId })
+      throw new Error(`Failed to fetch renovation works: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const createRenovationWork = async (workData: any) => {
+    const operation = 'Create Renovation Work'
+    console.log(`🔨 ${operation} - Starting...`)
+    
+    try {
+      // Map to Strapi's expected field names and values
+      const strapiData = {
+        Name: workData.name,
+        Description: workData.description,
+        Budget: workData.budget,
+        ScheduledStatus: workData.status ? 
+          workData.status.charAt(0).toUpperCase() + workData.status.slice(1) : 'Planned',
+        executionType: workData.executionType || 'DIY',
+        Timeline: workData.timeline ? 
+          workData.timeline.charAt(0).toUpperCase() + workData.timeline.slice(1) : 'Now',
+        Year: workData.year || new Date().getFullYear(),
+        canActivate: workData.canActivate || false,
+        progress: workData.progress || 0,
+        Contractor: workData.contractor || { name: null, phone: null, email: null }
+      }
+      
+      // Add user relation if available
+      if (workData.userId) {
+        strapiData.user = workData.userId
+      }
+      
+      // Add project relation if available  
+      if (workData.projectId) {
+        strapiData.project = workData.projectId
+      }
+      
+      const response = await apiCall('/api/renovation-works', {
+        method: 'POST',
+        body: { data: strapiData }
+      })
+      
+      console.log(`✅ ${operation} - Success`)
+      
+      // Transform response back to frontend format
+      return {
+        id: response.data.id || response.data.documentId,
+        name: response.data.Name || response.data.name,
+        description: response.data.Description || response.data.description,
+        budget: response.data.Budget || response.data.budget || 0,
+        actualCost: response.data.ActualCost || response.data.actualCost,
+        status: (response.data.ScheduledStatus || response.data.status || 'planned').toLowerCase(),
+        executionType: response.data.executionType || 'DIY',
+        timeline: (response.data.Timeline || response.data.timeline || 'now').toLowerCase(),
+        year: response.data.Year || response.data.year,
+        progress: response.data.progress || 0,
+        canActivate: response.data.canActivate || false,
+        contractor: response.data.Contractor || response.data.contractor || { name: null, phone: null, email: null },
+        startDate: response.data.StartDate ? new Date(response.data.StartDate) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt),
+        todos: [],
+        attachments: []
+      }
+    } catch (error) {
+      logApiError(operation, error, { workData })
+      throw new Error(`Failed to create renovation work: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const updateRenovationWork = async (workId: string, updates: any) => {
+    const operation = `Update Renovation Work (${workId})`
+    console.log(`🔨 ${operation} - Starting...`)
+    
+    try {
+      // First, we need to get the actual ID format Strapi expects
+      // Try to get the work first to determine the right ID to use
+      let strapiId = workId
+      
+      // If the workId looks like a number, keep it. Otherwise it might be a documentId
+      const isNumericId = /^\d+$/.test(workId)
+      
+      if (!isNumericId) {
+        // This might be a documentId, we need to find the actual work
+        const works = await apiCall('/api/renovation-works', { method: 'GET' })
+        const foundWork = works.data.find((w: any) => 
+          w.id === workId || w.documentId === workId
+        )
+        if (foundWork) {
+          strapiId = foundWork.documentId || foundWork.id
+        }
+      }
+      
+      // Map to Strapi's expected field names
+      const strapiData: any = {}
+      
+      if (updates.name !== undefined) strapiData.Name = updates.name
+      if (updates.description !== undefined) strapiData.Description = updates.description
+      if (updates.budget !== undefined) strapiData.Budget = updates.budget
+      if (updates.actualCost !== undefined) strapiData.ActualCost = updates.actualCost
+      if (updates.status !== undefined) {
+        strapiData.ScheduledStatus = updates.status.charAt(0).toUpperCase() + updates.status.slice(1)
+      }
+      if (updates.executionType !== undefined) strapiData.executionType = updates.executionType
+      if (updates.timeline !== undefined) {
+        strapiData.Timeline = updates.timeline.charAt(0).toUpperCase() + updates.timeline.slice(1)
+      }
+      if (updates.year !== undefined) strapiData.Year = updates.year
+      if (updates.progress !== undefined) strapiData.progress = updates.progress
+      if (updates.canActivate !== undefined) strapiData.canActivate = updates.canActivate
+      if (updates.contractor !== undefined) {
+        strapiData.Contractor = {
+          name: updates.contractor.name || null,
+          phone: updates.contractor.phone || null,
+          email: updates.contractor.email || null
+        }
+      }
+      if (updates.startDate !== undefined) {
+        strapiData.StartDate = updates.startDate ? 
+          (updates.startDate instanceof Date ? updates.startDate.toISOString() : updates.startDate) : null
+      }
+      if (updates.completedAt !== undefined) {
+        strapiData.CompletedAt = updates.completedAt ? 
+          (updates.completedAt instanceof Date ? updates.completedAt.toISOString() : updates.completedAt) : null
+      }
+      
+      // Handle todos if they exist
+      if (updates.todos !== undefined) {
+        strapiData.todos = updates.todos.map((todo: any) => ({
+          text: todo.text,
+          completed: todo.completed
+        }))
+      }
+      
+      const response = await apiCall(`/api/renovation-works/${strapiId}`, {
+        method: 'PUT',
+        body: { data: strapiData }
+      })
+      
+      console.log(`✅ ${operation} - Success`)
+      
+      // Transform response back to frontend format
+      return {
+        id: response.data.id || response.data.documentId,
+        name: response.data.Name || response.data.name,
+        description: response.data.Description || response.data.description,
+        budget: response.data.Budget || response.data.budget || 0,
+        actualCost: response.data.ActualCost || response.data.actualCost,
+        status: (response.data.ScheduledStatus || response.data.status || 'planned').toLowerCase(),
+        executionType: response.data.executionType || 'DIY',
+        timeline: (response.data.Timeline || response.data.timeline || 'now').toLowerCase(),
+        year: response.data.Year || response.data.year,
+        progress: response.data.progress || 0,
+        canActivate: response.data.canActivate || false,
+        contractor: response.data.Contractor || response.data.contractor || { name: null, phone: null, email: null },
+        startDate: response.data.StartDate ? new Date(response.data.StartDate) : undefined,
+        completedAt: response.data.CompletedAt ? new Date(response.data.CompletedAt) : undefined,
+        updatedAt: new Date(response.data.updatedAt),
+        todos: response.data.todos || [],
+        attachments: response.data.attachments || []
+      }
+    } catch (error) {
+      logApiError(operation, error, { workId, updates })
+      throw new Error(`Failed to update renovation work: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const deleteRenovationWork = async (workId: string) => {
+    const operation = `Delete Renovation Work (${workId})`
+    console.log(`🔨 ${operation} - Starting...`)
+    
+    try {
+      // First, we need to get the actual ID format Strapi expects
+      let strapiId = workId
+      
+      // If the workId looks like a number, keep it. Otherwise it might be a documentId
+      const isNumericId = /^\d+$/.test(workId)
+      
+      if (!isNumericId) {
+        // This might be a documentId, we need to find the actual work
+        const works = await apiCall('/api/renovation-works', { method: 'GET' })
+        const foundWork = works.data.find((w: any) => 
+          w.id === workId || w.documentId === workId
+        )
+        if (foundWork) {
+          strapiId = foundWork.documentId || foundWork.id
+        }
+      }
+      
+      await apiCall(`/api/renovation-works/${strapiId}`, { method: 'DELETE' })
+      console.log(`✅ ${operation} - Success`)
+      return true
+    } catch (error) {
+      logApiError(operation, error, { workId })
+      throw new Error(`Failed to delete renovation work: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // File upload for renovation works
+  const uploadFile = async (file: File, name: string) => {
+    const operation = 'Upload File'
+    console.log(`📁 ${operation} - Starting...`)
+    
+    try {
+      const formData = new FormData()
+      formData.append('files', file)
+      
+      const response = await fetch(`${strapiBaseURL}/api/upload`, {
+        method: 'POST',
+        // TODO: Add authentication when auth system is ready
+        // headers: { 'Authorization': `Bearer ${user.value?.jwt}` },
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`)
+      }
+      
+      const uploadedFiles = await response.json()
+      console.log(`✅ ${operation} - Success`)
+      return uploadedFiles[0] // Return first uploaded file
+    } catch (error) {
+      logApiError(operation, error, { fileName: file.name, fileSize: file.size })
+      throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const deleteFile = async (fileId: string) => {
+    const operation = `Delete File (${fileId})`
+    console.log(`📁 ${operation} - Starting...`)
+    
+    try {
+      await apiCall(`/api/upload/files/${fileId}`, { method: 'DELETE' })
+      console.log(`✅ ${operation} - Success`)
+      return true
+    } catch (error) {
+      logApiError(operation, error, { fileId })
+      return false
+    }
+  }
+
+  // Information inquiry requests
+  const saveInformationInquiry = async (email: string, topic: string, userData?: any) => {
+    const operation = 'Save Information Inquiry'
+    console.log(`📧 ${operation} - Starting...`, { email, topic })
+    
+    try {
+      const requestData = {
+        email,
+        topic,
+        userData: userData || null,
+        notified: false
+      }
+      
+      const response = await apiCall('/api/information-inquiries', {
+        method: 'POST',
+        body: { data: requestData }
+      })
+      
+      console.log(`✅ ${operation} - Success`)
+      return {
+        success: true,
+        id: response.data.id || response.data.documentId,
+        message: `Email saved successfully! We'll notify you when ${topic} is available.`
+      }
+    } catch (error) {
+      // Check if it's a duplicate email error
+      if ((error as any)?.status === 400) {
+        console.log(`ℹ️ ${operation} - Duplicate email, updating existing record`)
+        try {
+          // Try to update existing record instead
+          const existingResponse = await apiCall(`/api/information-inquiries?filters[email][$eq]=${email}`)
+          if (existingResponse.data && existingResponse.data.length > 0) {
+            const existingId = existingResponse.data[0].documentId || existingResponse.data[0].id
+            await apiCall(`/api/information-inquiries/${existingId}`, {
+              method: 'PUT',
+              body: { 
+                data: { 
+                  topic,
+                  userData: userData || null,
+                  updatedAt: new Date().toISOString()
+                } 
+              }
+            })
+            return {
+              success: true,
+              id: existingId,
+              message: `Email updated! We'll notify you when ${topic} is available.`
+            }
+          }
+        } catch (updateError) {
+          // Fall through to generic error handling
+        }
+      }
+      
+      logApiError(operation, error, { email, topic })
+      return {
+        success: false,
+        message: 'Failed to save email. Please try again later.'
+      }
+    }
+  }
+
+  const getInformationInquiries = async () => {
+    const operation = 'Get Information Inquiries'
+    console.log(`📧 ${operation} - Starting...`)
+    
+    try {
+      const response = await apiCall('/api/information-inquiries?sort=createdAt:desc')
+      console.log(`✅ ${operation} - Success`, { count: response.data?.length || 0 })
+      
+      return response.data.map((item: any) => ({
+        id: item.documentId || item.id,
+        email: item.email,
+        topic: item.topic,
+        notified: item.notified,
+        userData: item.userData,
+        notes: item.notes,
+        createdAt: new Date(item.createdAt),
+        updatedAt: new Date(item.updatedAt)
+      }))
+    } catch (error) {
+      logApiError(operation, error)
+      return []
+    }
+  }
+
   return {
     client,
+    // 3D Project methods
     loadProject,
     loadUserProjects,
     saveProject,
@@ -1488,6 +1927,16 @@ export const useStrapi = () => {
     transformDoorToWindow,
     // Roof type options
     getRoofTypeOptions,
+    // Renovation Works methods
+    fetchUserRenovationWorks,
+    createRenovationWork,
+    updateRenovationWork,
+    deleteRenovationWork,
+    uploadFile,
+    deleteFile,
+    // Information inquiry methods
+    saveInformationInquiry,
+    getInformationInquiries,
     // Utility exports
     transformProject, // Export for testing
     transformProjectToStrapi, // Export for testing

@@ -46,6 +46,16 @@
             </div>
           </div>
 
+          <!-- Work Status Control - Prominent Position -->
+          <div class="status-section">
+            <WorkActivationToggle
+              :work-id="work.id"
+              :start-date="work.startDate"
+              :todos="work.todos"
+              @update-start-date="handleUpdateStartDate"
+            />
+          </div>
+
           <!-- Modal Body -->
           <div class="modal-body">
             <!-- Edit Mode -->
@@ -326,7 +336,7 @@
                   <span class="request-icon">👷</span>
                   <p>No contractor assigned yet</p>
                 </div>
-                <button class="btn-request-contractor">
+                <button class="btn-request-contractor" @click="showComingSoonModal = true">
                   Request Contractor
                 </button>
               </div>
@@ -592,12 +602,23 @@
       @confirm="handleRemoveContractor"
       @cancel="showRemoveContractorDialog = false"
     />
+    
+    <!-- Coming Soon Modal for Contractor Request -->
+    <ComingSoonModal
+      :is-open="showComingSoonModal"
+      title="Contractor Marketplace"
+      subtitle="Connect with trusted renovation professionals"
+      description="We're building a curated network of verified contractors in Belgium. Soon you'll be able to browse profiles, compare quotes, and connect directly with professionals who specialize in your type of renovation work."
+      @close="showComingSoonModal = false"
+      @request-notification="handleNotificationRequest"
+    />
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import type { RenovationWork, WorkTodo, ExecutionType } from '~/types/renovationWork'
 import ConfirmationModal from '~/components/modals/ConfirmationModal.vue'
+import ComingSoonModal from '~/components/modals/ComingSoonModal.vue'
 
 const props = defineProps<{
   work: RenovationWork
@@ -648,6 +669,7 @@ const showConfirmDialog = ref(false)
 const showUploadsSection = ref(false)
 const showEditMode = ref(false)
 const showRemoveContractorDialog = ref(false)
+const showComingSoonModal = ref(false)
 const newCostDescription = ref('')
 const newCostAmount = ref<number | null>(null)
 
@@ -740,6 +762,51 @@ const deleteTodo = (todoId: string) => {
   const index = localWork.value.todos.findIndex(t => t.id === todoId)
   if (index !== -1) {
     localWork.value.todos.splice(index, 1)
+  }
+}
+
+// Handle start date updates
+const handleUpdateStartDate = async (workId: string, date: Date | null) => {
+  const { updateWork } = useRenovationWorks()
+  
+  // Update local work
+  localWork.value.startDate = date
+  localWork.value.updatedAt = new Date()
+  
+  // Calculate new status based on date and todos
+  if (!date) {
+    localWork.value.status = 'planned'
+  } else {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const startDate = new Date(date)
+    startDate.setHours(0, 0, 0, 0)
+    
+    if (startDate > today) {
+      localWork.value.status = 'future'
+    } else if (startDate <= today) {
+      const allTodosCompleted = localWork.value.todos.length > 0 && 
+        localWork.value.todos.every(t => t.completed)
+      
+      if (allTodosCompleted) {
+        localWork.value.status = 'completed'
+        localWork.value.completedAt = new Date()
+      } else {
+        localWork.value.status = 'active'
+      }
+    }
+  }
+  
+  try {
+    const success = await updateWork(workId, localWork.value)
+    if (success) {
+      console.log(`✅ Work date updated successfully`)
+      emit('update', localWork.value)
+    } else {
+      console.error(`❌ Failed to update work date`)
+    }
+  } catch (error) {
+    console.error('Failed to update work:', error)
   }
 }
 
@@ -1014,6 +1081,34 @@ const formatWorkTimeline = (timeline: string, year?: number) => {
   }
   return timeline
 }
+
+// Coming Soon Modal handler
+const handleNotificationRequest = async (email: string) => {
+  const { saveInformationInquiry } = useStrapi()
+  
+  try {
+    // Include context about the current user and work for better targeting
+    const userData = {
+      workId: props.work.id,
+      workName: props.work.name,
+      executionType: props.work.executionType,
+      // Add user ID when auth is available
+      userId: null // TODO: Get from useAuth when ready
+    }
+    
+    const result = await saveInformationInquiry(email, 'contractor-marketplace', userData)
+    
+    if (result.success) {
+      console.log('✅ Email saved successfully:', result.message)
+      // TODO: Show success toast/notification to user
+    } else {
+      console.error('❌ Failed to save email:', result.message)
+      // TODO: Show error message to user
+    }
+  } catch (error) {
+    console.error('Failed to save information inquiry:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -1092,6 +1187,12 @@ const formatWorkTimeline = (timeline: string, year?: number) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.status-section {
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .form-grid {

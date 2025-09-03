@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_work_attachments",
+  "info": {
+    "displayName": "Attachment",
+    "description": "Simple file attachments for renovation work",
+    "icon": "file"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": ["images", "files", "videos", "audios"]
+    }
+  }
+}

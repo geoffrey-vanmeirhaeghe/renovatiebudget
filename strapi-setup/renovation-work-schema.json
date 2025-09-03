@@ -1,0 +1,101 @@
+{
+  "kind": "collectionType",
+  "collectionName": "renovation_works",
+  "info": {
+    "singularName": "renovation-work",
+    "pluralName": "renovation-works",
+    "displayName": "Renovation Work",
+    "description": "Simple renovation work tracking"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "text",
+      "maxLength": 1000
+    },
+    "budget": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "actualCost": {
+      "type": "decimal"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["active", "planned", "future", "completed"],
+      "default": "planned",
+      "required": true
+    },
+    "executionType": {
+      "type": "enumeration",
+      "enum": ["DIY", "Contractor", "Hybrid"],
+      "default": "DIY",
+      "required": true
+    },
+    "timeline": {
+      "type": "enumeration",
+      "enum": ["now", "Q1", "Q2", "Q3", "Q4"],
+      "default": "now",
+      "required": true
+    },
+    "year": {
+      "type": "integer",
+      "min": 2024,
+      "max": 2035
+    },
+    "progress": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "canActivate": {
+      "type": "boolean",
+      "default": false
+    },
+    "startDate": {
+      "type": "date"
+    },
+    "completedAt": {
+      "type": "datetime"
+    },
+    "contractor": {
+      "type": "json",
+      "default": {
+        "name": null,
+        "phone": null,
+        "email": null
+      }
+    },
+    "todos": {
+      "type": "component",
+      "repeatable": true,
+      "component": "work.todo"
+    },
+    "attachments": {
+      "type": "component",
+      "repeatable": true,
+      "component": "work.attachment"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project.project",
+      "inversedBy": "renovationWorks"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

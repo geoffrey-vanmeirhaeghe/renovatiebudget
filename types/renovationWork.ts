@@ -14,7 +14,7 @@ export interface WorkTodo {
   notes?: string
 }
 
-export interface WorkDocument {
+export interface WorkAttachment {
   id: string
   type: 'invoice' | 'receipt' | 'quote' | 'contract' | 'photo' | 'other'
   name: string
@@ -51,26 +51,15 @@ export interface RenovationWork {
   timeline: TimelineType
   year?: number
   todos: WorkTodo[]
-  documents: WorkDocument[]
-  progressUpdates: WorkProgress[]
-  costLines?: CostLine[]
-  workComponents?: WorkComponent[] // New: Predefined work templates
+  attachments: WorkAttachment[]
   progress: number
-  progressDescription?: string
   canActivate: boolean
-  financing?: {
-    secured: boolean
-    type?: string
-    amount?: number
-  }
   contractor?: {
     name?: string
     phone?: string
     email?: string
-    contractSigned?: boolean
   }
   startDate?: Date
-  expectedEndDate?: Date
   createdAt: Date
   updatedAt: Date
   completedAt?: Date

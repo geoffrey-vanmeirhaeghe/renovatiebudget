@@ -146,26 +146,13 @@
                     <span class="text-xs text-gray-500 font-medium whitespace-nowrap">{{ work.progressDescription || `${work.progress}% complete` }}</span>
                   </div>
                   <div class="flex justify-between items-center">
-                    <button 
-                      @click.stop="handleDeactivateWork(work.id)"
-                      class="bg-gray-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-gray-600 transition-colors duration-200 flex items-center gap-1"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="6" y="4" width="4" height="16"></rect>
-                        <rect x="14" y="4" width="4" height="16"></rect>
-                      </svg>
-                      Deactivate
-                    </button>
-                    <button 
-                      v-if="work.progress === 100 && work.status !== 'completed'"
-                      @click.stop="handleCompleteWork(work.id)"
-                      class="bg-success-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-success-600 transition-colors duration-200 flex items-center gap-1"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                      Complete Work
-                    </button>
+                    <WorkActivationToggle
+                      :work-id="work.id"
+                      :start-date="work.startDate"
+                      :todos="work.todos"
+                      @update-start-date="handleUpdateStartDate"
+                      @open-planning="() => openWorkDetail(work)"
+                    />
                   </div>
                 </div>
               </div>
@@ -174,7 +161,7 @@
 
             <!-- Planned Works -->
             <div class="flex flex-col gap-4 min-w-0" v-if="plannedWorks.length > 0">
-              <div class="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-2">Ready to Activate</div>
+              <div class="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-2">Not planned</div>
               
               <div class="flex relative" v-for="work in plannedWorks" :key="work.id">
                 <div class="flex-1 bg-warning-50 border border-warning-300 border-dashed rounded-lg p-4 flex flex-col gap-3 transition-all duration-200 hover:bg-warning-100">
@@ -198,19 +185,13 @@
                     {{ work.description }}
                   </div>
                   <div class="flex justify-between items-center">
-                    <div class="text-xs text-gray-500">
-                      {{ work.canActivate ? 'Ready to start' : 'Planning stage' }}
-                    </div>
-                    <button 
-                      v-if="work.canActivate"
-                      @click.stop="handleActivateWork(work.id)"
-                      class="bg-primary-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-primary-600 transition-colors duration-200 flex items-center gap-1"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                      Activate
-                    </button>
+                    <WorkActivationToggle
+                      :work-id="work.id"
+                      :start-date="work.startDate"
+                      :todos="work.todos"
+                      @update-start-date="handleUpdateStartDate"
+                      @open-planning="() => openWorkDetail(work)"
+                    />
                   </div>
                 </div>
               </div>
@@ -386,8 +367,8 @@ onMounted(async () => {
     // Load project data (fallback to mock if Strapi unavailable)
     await loadProject('ca66f5looy2mij5rua9yj987', true)
     
-    // Load renovation works
-    await loadWorks('ca66f5looy2mij5rua9yj987')
+    // Load renovation works (using user ID when auth is ready, for now load all)
+    await loadWorks()
   } catch (error) {
     console.error('Failed to load Strapi data, falling back to mock data:', error)
     const { loadProject } = useProject()
@@ -409,6 +390,53 @@ const handleDeactivateWork = async (workId: string) => {
   const success = await deactivateWork(workId)
   if (success) {
     console.log('⏸️ Work deactivated successfully')
+  }
+}
+
+// Handle start date updates for works
+const handleUpdateStartDate = async (workId: string, date: Date | null) => {
+  const { updateWork, state } = useRenovationWorks()
+  
+  // Find the work to update
+  const work = state.value.works.find(w => w.id === workId)
+  if (!work) return
+  
+  // Update the work with new date
+  const updatedWork = { ...work, startDate: date, updatedAt: new Date() }
+  
+  // Calculate new status based on date and todos
+  if (!date) {
+    updatedWork.status = 'planned'
+  } else {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const startDate = new Date(date)
+    startDate.setHours(0, 0, 0, 0)
+    
+    if (startDate > today) {
+      updatedWork.status = 'future'
+    } else if (startDate <= today) {
+      const allTodosCompleted = work.todos.length > 0 && 
+        work.todos.every(t => t.completed)
+      
+      if (allTodosCompleted) {
+        updatedWork.status = 'completed'
+        updatedWork.completedAt = new Date()
+      } else {
+        updatedWork.status = 'active'
+      }
+    }
+  }
+  
+  try {
+    const success = await updateWork(workId, updatedWork)
+    if (success) {
+      console.log(`✅ Work date updated successfully`)
+    } else {
+      console.error(`❌ Failed to update work date`)
+    }
+  } catch (error) {
+    console.error('Failed to update work:', error)
   }
 }
 
