@@ -132,19 +132,19 @@
                         <div class="inline-controls">
                           <div class="control-group">
                             <span class="control-label">Size:</span>
-                            <input v-model.number="window.width" type="number" min="60" max="300" step="10" class="small-input">
+                            <input v-model.number="window.width" type="number" min="60" max="300" step="10" class="small-input" @click.stop>
                             <span class="separator">×</span>
-                            <input v-model.number="window.height" type="number" min="80" max="250" step="10" class="small-input">
+                            <input v-model.number="window.height" type="number" min="80" max="250" step="10" class="small-input" @click.stop>
                           </div>
                           <div class="control-group">
                             <span class="control-label">Position:</span>
-                            <select v-model="window.orientation" class="small-select">
+                            <select v-model="window.orientation" class="small-select" @click.stop>
                               <option v-for="opt in orientationOptions" :key="opt.value" :value="opt.value">
                                 {{ opt.label }}
                               </option>
                             </select>
-                            <input v-model.number="window.x" type="number" min="-500" max="500" step="10" class="small-input">
-                            <input v-model.number="window.y" type="number" min="0" max="200" step="10" class="small-input">
+                            <input v-model.number="window.x" type="number" min="-500" max="500" step="10" class="small-input" @click.stop>
+                            <input v-model.number="window.y" type="number" min="0" max="200" step="10" class="small-input" @click.stop>
                           </div>
                         </div>
                       </div>
@@ -180,19 +180,19 @@
                         <div class="inline-controls">
                           <div class="control-group">
                             <span class="control-label">Size:</span>
-                            <input v-model.number="door.width" type="number" min="70" max="150" step="10" class="small-input">
+                            <input v-model.number="door.width" type="number" min="70" max="150" step="10" class="small-input" @click.stop>
                             <span class="separator">×</span>
-                            <input v-model.number="door.height" type="number" min="180" max="250" step="10" class="small-input">
+                            <input v-model.number="door.height" type="number" min="180" max="250" step="10" class="small-input" @click.stop>
                           </div>
                           <div class="control-group">
                             <span class="control-label">Position:</span>
-                            <select v-model="door.orientation" class="small-select">
+                            <select v-model="door.orientation" class="small-select" @click.stop>
                               <option v-for="opt in orientationOptions" :key="opt.value" :value="opt.value">
                                 {{ opt.label }}
                               </option>
                             </select>
-                            <input v-model.number="door.x" type="number" min="-500" max="500" step="10" class="small-input">
-                            <input v-model.number="door.y" type="number" min="0" max="50" step="10" class="small-input">
+                            <input v-model.number="door.x" type="number" min="-500" max="500" step="10" class="small-input" @click.stop>
+                            <input v-model.number="door.y" type="number" min="0" max="50" step="10" class="small-input" @click.stop>
                           </div>
                         </div>
                       </div>
@@ -462,7 +462,6 @@ const skipGuide = () => {
 // Standard template project for onboarding
 const createStandardProject = () => {
   return {
-    id: 'onboarding-template',
     name: 'My New House',
     description: 'House design template for onboarding',
     generalAttributes: {
