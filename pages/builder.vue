@@ -7,6 +7,7 @@
       
       <!-- Category Navigation (top-right) -->
       <CategoryButtons 
+        :is-onboarding-mode="isOnboardingMode"
         @category-selected="onCategorySelected"
         @category-deselected="onCategoryDeselected"
       />
@@ -19,7 +20,7 @@
       
       <!-- Main 3D Visualization -->
       <div class="visualization-area">
-        <House v-if="currentProject" :project="currentProject" />
+        <House v-if="displayProject" :project="displayProject" />
       </div>
       
       <!-- Left Side Context Panel -->
@@ -38,11 +39,19 @@
       <!-- Actions Handler (modals, confirmations, etc.) -->
       <PropertyPanelActions ref="actionsHandler" />
       
-      <!-- Guided Onboarding Overlay -->
-      <BuilderGuide 
-        v-if="showGuide"
+      <!-- Guided Onboarding Panel -->
+      <BuilderGuidePanel 
+        v-model="showGuide"
         @house-completed="onHouseCompleted"
         @guide-cancelled="onGuideCancelled"
+        @update-project="onProjectUpdate"
+      />
+      
+      <!-- Onboarding Completion Card -->
+      <OnboardingCompleteCard
+        v-model="showCompletionPanel"
+        @continue-building="continueBuilding"
+        @go-to-dashboard="goToDashboard"
       />
     </div>
   </div>
@@ -59,7 +68,8 @@ import SidePanel from '~/components/ui/SidePanel.vue'
 import PropertyPanelActions from '~/components/ui/PropertyPanelActions.vue'
 import House from '~/components/renderings/house.vue'
 import ToolTooltip from '~/components/ui/ToolTooltip.vue'
-import BuilderGuide from '~/components/onboarding/BuilderGuide.vue'
+import BuilderGuidePanel from '~/components/onboarding/BuilderGuidePanel.vue'
+import OnboardingCompleteCard from '~/components/ui/OnboardingCompleteCard.vue'
 
 // Protect this page with authentication and onboarding checks
 definePageMeta({
@@ -77,11 +87,38 @@ interface ToolItem {
 const { currentUser, getUserRegion, logout, fetchUserProfile } = useAuth()
 
 // Get project data
-const { currentProject, loadProject } = useProject()
+const { currentProject, loadProject, updateProject } = useProject()
+
+// Store the guided project temporarily
+const guidedProject = ref(null)
+
+// Use guided project during onboarding, otherwise use current project
+const displayProject = computed(() => {
+  if (isOnboardingMode.value) {
+    // During onboarding, only show project if we have one from the guide
+    return guidedProject.value
+  }
+  return currentProject.value
+})
 
 // User phase detection for guided onboarding
 const userPhase = ref<string>('')
 const showGuide = ref(false)
+const isOnboardingMode = ref(false)
+const showCompletionPanel = ref(false)
+
+// Check if user is in onboarding phase
+onMounted(async () => {
+  if (currentUser.value) {
+    userPhase.value = currentUser.value.userPhase || 'onboarding'
+    
+    // Show guide if user is in project-setup phase (just finished onboarding)
+    if (userPhase.value === 'project-setup') {
+      isOnboardingMode.value = true
+      showGuide.value = true
+    }
+  }
+})
 
 // Tool and category management for 3D mode
 const selectedCategory = ref<string | null>('layout') // Default to layout category
@@ -195,8 +232,9 @@ const onHouseCompleted = async (houseConfiguration: any) => {
       console.warn('Could not update user phase:', error)
     }
     
-    // Hide the guide and show regular builder
+    // Hide the guide and show completion panel
     showGuide.value = false
+    showCompletionPanel.value = true
     
     console.log('✅ House creation completed successfully!')
   } catch (error) {
@@ -208,6 +246,28 @@ const onHouseCompleted = async (houseConfiguration: any) => {
 const onGuideCancelled = () => {
   console.log('❌ House creation guide cancelled')
   showGuide.value = false
+}
+
+const continueBuilding = () => {
+  // Exit onboarding mode and show all tools
+  isOnboardingMode.value = false
+  console.log('✅ Continuing with full builder tools')
+}
+
+const goToDashboard = async () => {
+  // Navigate to dashboard
+  await navigateTo('/dashboard')
+}
+
+// Handle real-time project updates from guide panel
+const onProjectUpdate = (projectData: any) => {
+  console.log('📝 Updating project from guide:', projectData)
+  guidedProject.value = projectData
+  
+  // Update the current project to show changes in 3D
+  if (updateProject) {
+    updateProject(projectData)
+  }
 }
 
 // Create a project from guided configuration

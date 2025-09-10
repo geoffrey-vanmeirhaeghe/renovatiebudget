@@ -1,7 +1,7 @@
 <template>
   <div class="category-buttons">
     <button
-      v-for="category in categories"
+      v-for="category in availableCategories"
       :key="category.id"
       @click="selectCategory(category.id)"
       :class="{ active: selectedCategory === category.id }"
@@ -29,7 +29,25 @@ interface ToolCategory {
   tools: ToolItem[]
 }
 
+const props = defineProps<{
+  isOnboardingMode?: boolean
+}>()
+
 const selectedCategory = ref<string | null>('layout') // Default to layout category
+
+// Available categories based on mode
+const availableCategories = computed(() => {
+  if (props.isOnboardingMode) {
+    // Only show basic layout tools during onboarding
+    return categories.filter(cat => cat.id === 'layout').map(cat => ({
+      ...cat,
+      tools: cat.tools.filter(tool => 
+        ['add-floor', 'add-window', 'add-door'].includes(tool.id)
+      )
+    }))
+  }
+  return categories
+})
 
 // Define the main tool categories (from ToolDock)
 const categories: ToolCategory[] = [
