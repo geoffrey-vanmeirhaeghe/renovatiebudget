@@ -48,6 +48,9 @@
       
       <div v-if="error" class="error-message">
         {{ error }}
+        <div v-if="error.includes('already exists')" class="error-action">
+          <NuxtLink to="/auth/login" class="login-link">→ Go to login page</NuxtLink>
+        </div>
       </div>
     </div>
   </div>
@@ -248,6 +251,22 @@ const handleRegister = async () => {
   margin-top: 1rem;
   text-align: center;
   font-size: 0.9rem;
+}
+
+.error-action {
+  margin-top: 0.75rem;
+}
+
+.login-link {
+  color: #667eea;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.login-link:hover {
+  color: #764ba2;
+  text-decoration: underline;
 }
 
 @media (max-width: 600px) {

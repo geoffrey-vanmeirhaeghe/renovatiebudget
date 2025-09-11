@@ -440,14 +440,20 @@ const previousStep = () => {
 }
 
 const completeGuide = () => {
+  // Build the complete project configuration with all details
   const projectData = {
-    houseWidth: houseConfig.widthMeters * 100,
-    houseDepth: houseConfig.depthMeters * 100,
-    floors: houseConfig.floors,
-    windowsPerFloor: houseConfig.windowsPerFloor,
-    doorsPerFloor: houseConfig.doorsPerFloor,
-    roofType: houseConfig.roofType,
-    roofHeight: houseConfig.roofHeightMeters * 100
+    propertySize: {
+      width: houseConfig.widthMeters * 100,
+      depth: houseConfig.depthMeters * 100
+    },
+    floorCount: houseConfig.floors,
+    floorHeight: 250, // Standard height
+    windows: houseConfig.windows,
+    doors: houseConfig.doors,
+    roof: {
+      type: houseConfig.roofType,
+      height: houseConfig.roofHeightMeters * 100
+    }
   }
   
   emit('house-completed', projectData)
@@ -459,21 +465,19 @@ const skipGuide = () => {
   isVisible.value = false
 }
 
-// Standard template project for onboarding
-const createStandardProject = () => {
+// Generate visual-only project for 3D display (NOT saved to Strapi)
+const generateVisualProject = () => {
   return {
     name: 'My New House',
-    description: 'House design template for onboarding',
+    description: 'House design template',
     generalAttributes: {
       propertySize: {
         width: houseConfig.widthMeters * 100 + 200,
         depth: houseConfig.depthMeters * 100 + 200,
-        area: (houseConfig.widthMeters + 2) * (houseConfig.depthMeters + 2)
       },
       floorSize: {
         width: houseConfig.widthMeters * 100,
         depth: houseConfig.depthMeters * 100,
-        area: houseConfig.widthMeters * houseConfig.depthMeters
       },
       region: 'flanders'
     },
@@ -482,11 +486,9 @@ const createStandardProject = () => {
   }
 }
 
-// Generate floors based on current config
+// Generate floors for visual display
 const generateFloorsFromConfig = () => {
   const floors: any = {}
-  
-  // Always create at least one floor for foundation
   const floorCount = Math.max(1, houseConfig.floors)
   
   for (let i = 0; i < floorCount; i++) {
@@ -535,7 +537,7 @@ const generateFloorsFromConfig = () => {
   return floors
 }
 
-// Generate roof based on current config
+// Generate roof for visual display
 const generateRoofFromConfig = () => {
   return {
     type: houseConfig.roofType,
@@ -546,19 +548,19 @@ const generateRoofFromConfig = () => {
   }
 }
 
-// Update project in real-time
-const updateLiveProject = () => {
-  const liveProject = createStandardProject()
-  emit('update-project', liveProject)
+// Update visual display only (NOT saved to Strapi)
+const updateVisualDisplay = () => {
+  const visualProject = generateVisualProject()
+  emit('update-project', visualProject)
 }
 
-// Watch for changes and update project live
-watch([() => houseConfig.widthMeters, () => houseConfig.depthMeters], updateLiveProject)
-watch(() => houseConfig.floors, updateLiveProject)
-watch(() => houseConfig.roofType, updateLiveProject)
-watch(() => houseConfig.roofHeightMeters, updateLiveProject)
-watch(() => houseConfig.windows, updateLiveProject, { deep: true })
-watch(() => houseConfig.doors, updateLiveProject, { deep: true })
+// Watch for changes and update visual display ONLY
+watch([() => houseConfig.widthMeters, () => houseConfig.depthMeters], updateVisualDisplay)
+watch(() => houseConfig.floors, updateVisualDisplay)
+watch(() => houseConfig.roofType, updateVisualDisplay)
+watch(() => houseConfig.roofHeightMeters, updateVisualDisplay)
+watch(() => houseConfig.windows, updateVisualDisplay, { deep: true })
+watch(() => houseConfig.doors, updateVisualDisplay, { deep: true })
 
 // Clean up windows/doors when floors change
 watch(() => houseConfig.floors, (newCount, oldCount) => {
@@ -569,11 +571,11 @@ watch(() => houseConfig.floors, (newCount, oldCount) => {
   }
 })
 
-// Load initial project immediately when component is visible
+// Initialize visual display when panel opens
 watch(isVisible, (visible) => {
   if (visible) {
-    // Load the initial project template immediately
-    updateLiveProject()
+    // Load initial visual display immediately
+    updateVisualDisplay()
   }
 }, { immediate: true })
 </script>

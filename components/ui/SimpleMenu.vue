@@ -42,11 +42,21 @@ const lastSavedProjectState = ref<string>('')
 const hasUnsavedChanges = ref(false)
 
 const canSave = computed(() => {
-  return currentProject.value && currentProject.value.id && !currentProject.value.id.startsWith('mock-')
+  // Allow saving if we have a project with data, even if it doesn't have an ID yet
+  // (it will be created on first save)
+  return currentProject.value && (
+    // Either has a valid Strapi ID
+    (currentProject.value.id && !currentProject.value.id.startsWith('mock-') && !currentProject.value.id.startsWith('guided-') && !currentProject.value.id.startsWith('empty-'))
+    // Or has no ID yet (new project to be created)
+    || !currentProject.value.id
+    // Or has a temporary ID that needs to be saved
+    || currentProject.value.id.startsWith('guided-')
+    || currentProject.value.id.startsWith('empty-')
+  )
 })
 
 // Watch for project changes to detect unsaved modifications
-watch(() => currentProject.value, (newProject) => {
+watch(() => currentProject.value, (newProject, oldProject) => {
   if (!newProject) {
     hasUnsavedChanges.value = false
     return
@@ -56,6 +66,21 @@ watch(() => currentProject.value, (newProject) => {
   
   // If we don't have a saved state yet, initialize it
   if (!lastSavedProjectState.value) {
+    lastSavedProjectState.value = currentProjectString
+    hasUnsavedChanges.value = false
+    return
+  }
+  
+  // Check if project ID changed from temporary to real (indicating external save)
+  const oldId = oldProject?.id || ''
+  const newId = newProject.id || ''
+  const idChangedToReal = (
+    (oldId.startsWith('empty-') || oldId.startsWith('guided-') || oldId.startsWith('mock-')) &&
+    newId && !newId.startsWith('empty-') && !newId.startsWith('guided-') && !newId.startsWith('mock-')
+  )
+  
+  if (idChangedToReal) {
+    console.log('🔄 Detected external save - resetting saved state', { oldId, newId })
     lastSavedProjectState.value = currentProjectString
     hasUnsavedChanges.value = false
     return

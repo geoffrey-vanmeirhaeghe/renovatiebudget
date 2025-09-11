@@ -87,7 +87,7 @@ interface ToolItem {
 const { currentUser, getUserRegion, logout, fetchUserProfile } = useAuth()
 
 // Get project data
-const { currentProject, loadProject, updateProject } = useProject()
+const { currentProject, loadProject, updateProject, updateProjectVisual } = useProject()
 
 // Store the guided project temporarily
 const guidedProject = ref(null)
@@ -205,20 +205,25 @@ const onHouseCompleted = async (houseConfiguration: any) => {
     
     // Create new project from guided configuration
     const newProject = createProjectFromGuide(houseConfiguration)
+    console.log('📝 New project to save:', newProject)
     
-    // Load the new project into the builder
-    const { updateProject } = useProject()
-    await updateProject(newProject)
+    // Save the project to Strapi (this will create it in the database)
+    // Use simple signature like working PropertyPanel.vue flow
+    const { saveProject } = useProject()
+    const savedProject = await saveProject(newProject)
+    console.log('💾 Project saved to Strapi:', savedProject)
+    
+    // Note: saveProject already updates currentProject internally, no need to call updateProject again
     
     // Update user phase to 'onboarded' using the same approach as onboarding completion
     try {
-      const token = useCookie('auth-token')
+      const token = localStorage.getItem('auth_token')
       const config = useRuntimeConfig()
       
-      await $fetch(`${config.public.strapi.baseURL}/api/users/me`, {
+      await $fetch(`${config.public.strapi.baseURL}/api/users/${currentUser.value?.id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token.value}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: {
@@ -236,9 +241,13 @@ const onHouseCompleted = async (houseConfiguration: any) => {
     showGuide.value = false
     showCompletionPanel.value = true
     
+    // Clear guided project reference to prevent interference with main save button
+    guidedProject.value = null
+    
     console.log('✅ House creation completed successfully!')
   } catch (error) {
-    console.error('Error completing house creation:', error)
+    console.error('❌ Error completing house creation:', error)
+    alert(`Failed to save your house design: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the console for details.`)
   }
 }
 
@@ -246,11 +255,15 @@ const onHouseCompleted = async (houseConfiguration: any) => {
 const onGuideCancelled = () => {
   console.log('❌ House creation guide cancelled')
   showGuide.value = false
+  // Clear guided project reference
+  guidedProject.value = null
 }
 
 const continueBuilding = () => {
   // Exit onboarding mode and show all tools
   isOnboardingMode.value = false
+  // Clear guided project reference since we're now using the real saved project
+  guidedProject.value = null
   console.log('✅ Continuing with full builder tools')
 }
 
@@ -259,61 +272,89 @@ const goToDashboard = async () => {
   await navigateTo('/dashboard')
 }
 
-// Handle real-time project updates from guide panel
+// Handle visual-only project updates from guide panel (NOT saved to Strapi)
 const onProjectUpdate = (projectData: any) => {
-  console.log('📝 Updating project from guide:', projectData)
+  console.log('🎨 Updating visual display from guide:', projectData)
   guidedProject.value = projectData
   
-  // Update the current project to show changes in 3D
-  if (updateProject) {
-    updateProject(projectData)
-  }
+  // Update the visual display only (this does NOT save to Strapi)
+  updateProjectVisual(projectData)
 }
 
 // Create a project from guided configuration
 const createProjectFromGuide = (config: any) => {
   const baseProject = {
-    id: `guided-${Date.now()}`,
     name: 'My House Project',
     description: 'Created through guided onboarding',
     generalAttributes: {
       propertySize: {
         width: config.propertySize.width,
-        depth: config.propertySize.depth
+        depth: config.propertySize.depth,
+        area: (config.propertySize.width / 100) * (config.propertySize.depth / 100)
       },
       floorSize: {
         width: config.propertySize.width - 100, // Leave some margin
-        depth: config.propertySize.depth - 100
-      }
+        depth: config.propertySize.depth - 100,
+        area: ((config.propertySize.width - 100) / 100) * ((config.propertySize.depth - 100) / 100)
+      },
+      region: 'flanders' // Default region
     },
     floors: {},
     roof: null
   }
 
-  // Add floors from configuration
+  // Add floors from configuration with their windows and doors
   for (let i = 0; i < config.floorCount; i++) {
-    const floorId = `floor-${i}`
+    const floorId = i.toString()
+    
+    // Get windows for this floor from the config
+    const floorWindows = config.windows?.filter((w: any) => w.floor === i) || []
+    const windows: any = {}
+    floorWindows.forEach((window: any, index: number) => {
+      windows[(index + 1).toString()] = {
+        width: window.width,
+        height: window.height,
+        position: {
+          orientation: window.orientation,
+          x: window.x,
+          y: window.y
+        }
+      }
+    })
+    
+    // Get doors for this floor from the config
+    const floorDoors = config.doors?.filter((d: any) => d.floor === i) || []
+    const doors: any = {}
+    floorDoors.forEach((door: any, index: number) => {
+      doors[(index + 1).toString()] = {
+        width: door.width,
+        height: door.height,
+        position: {
+          orientation: door.orientation,
+          x: door.x,
+          y: door.y
+        }
+      }
+    })
+    
     baseProject.floors[floorId] = {
-      id: floorId,
       storey: i,
-      height: config.floorHeight || 280,
-      heightPosition: i * (config.floorHeight || 280),
-      positionX: 0,
-      positionZ: 0,
-      doors: {},
-      windows: {}
+      height: config.floorHeight || 250,
+      heightPosition: i * (config.floorHeight || 250),
+      color: '#f0f0f0',
+      windows,
+      doors
     }
   }
 
   // Add roof if configured
-  if (config.roof && config.roof.type !== 'none') {
+  if (config.roof && config.roof.type && config.roof.type !== 'none') {
     baseProject.roof = {
       type: config.roof.type,
-      height: 200,
+      height: config.roof.height || 250,
       width: config.propertySize.width,
       depth: config.propertySize.depth,
-      positionX: 0,
-      positionZ: 0
+      heightPosition: config.floorCount * (config.floorHeight || 250)
     }
   }
 
@@ -335,7 +376,6 @@ onMounted(async () => {
       console.log('🏠 New user in project setup - showing guided onboarding')
       
       // Create a completely empty project for guided onboarding
-      const { updateProject } = useProject()
       const emptyProject = {
         id: `empty-${Date.now()}`,
         name: 'New House Project',
@@ -354,7 +394,8 @@ onMounted(async () => {
         roof: null
       }
       
-      updateProject(emptyProject)
+      // Use visual-only update to avoid auto-save during onboarding
+      updateProjectVisual(emptyProject)
       console.log('📝 Created empty project for guided onboarding:', emptyProject)
       
       // Show the guided onboarding
@@ -362,13 +403,9 @@ onMounted(async () => {
       console.log('✨ Guided onboarding activated')
     } else {
       console.log('👤 Existing user - loading regular builder')
-      // Load project data (fallback to mock if Strapi unavailable)
-      try {
-        await loadProject('ca66f5looy2mij5rua9yj987', true)
-      } catch (strapiError) {
-        console.error('Failed to load Strapi data, falling back to mock data:', strapiError)
-        await loadProject()
-      }
+      // Load user's current project using the new helper function
+      const { loadUserCurrentProject } = useProject()
+      await loadUserCurrentProject()
       
       // Set layout category as active by default for regular users
       const layoutTools: ToolItem[] = [

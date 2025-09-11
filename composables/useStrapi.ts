@@ -350,12 +350,12 @@ export const useStrapi = () => {
     console.log(`📋 ${operation} - Starting...`, { userId })
     
     try {
-      // Use the working populate syntax from our tests with deep nesting for Windows/Doors
-      let endpoint = '/api/projects?populate[building][populate][floors][populate][Windows]=true&populate[building][populate][floors][populate][Doors]=true&populate[building][populate][Roof]=true'
+      // First, let's use a simpler query to check the basic filtering works
+      let endpoint = '/api/projects?populate[building]=true'
       
-      // Add user filter - REQUIRED for security
+      // Add user filter - try different field name variations
       if (userId) {
-        endpoint += `&filters[user][id][$eq]=${userId}`
+        endpoint += `&filters[users_permissions_user][id][$eq]=${userId}`
       } else {
         console.warn('⚠️ No user ID available - this will return ALL projects!')
       }
@@ -363,16 +363,32 @@ export const useStrapi = () => {
       console.log(`🔗 API endpoint: ${endpoint}`)
       const response = await client<{data: any[]}>(endpoint)
       
+      // If we got projects, now populate them fully one by one
+      const projects = []
+      for (const project of response.data) {
+        console.log(`🔍 Loading full project data for: ${project.ProjectName} (${project.documentId})`)
+        try {
+          const fullProject = await loadProject(project.documentId)
+          projects.push(fullProject)
+        } catch (projectError) {
+          console.warn(`⚠️ Failed to load full project ${project.documentId}:`, projectError)
+          // Use basic project data as fallback
+          projects.push(transformProject(project))
+        }
+      }
+      
+      const finalProjects = projects.length > 0 ? projects : response.data.map(transformProject)
+      
       console.log(`✅ ${operation} - Success:`, {
-        projectCount: response.data?.length || 0,
-        projects: response.data?.map(p => ({
-          id: p.documentId,
-          name: p.ProjectName,
-          hasBuilding: !!p.building
+        projectCount: finalProjects.length || 0,
+        projects: finalProjects?.map(p => ({
+          id: p.id,
+          name: p.name,
+          hasBuilding: !!p.floors && Object.keys(p.floors).length > 0
         })) || []
       })
       
-      return response.data.map(transformProject)
+      return finalProjects
     } catch (error) {
       logApiError(operation, error)
       throw new Error(`Failed to load projects: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -381,7 +397,7 @@ export const useStrapi = () => {
 
   const saveProject = async (project: Project): Promise<Project> => {
     const operation = `Save Project (${project.name || 'Unnamed'})`
-    const isNewProject = !project.id || project.id.startsWith('mock-')
+    const isNewProject = !project.id || project.id.startsWith('mock-') || project.id.startsWith('empty-')
     
     console.log(`💾 ${operation} - Starting...`, {
       isNewProject,
@@ -433,7 +449,172 @@ export const useStrapi = () => {
     }
   }
 
-  // Two-phase save strategy for Strapi v5 relations
+
+
+  // Helper function to add a door to a floor (for testing the full flow)
+  const addDoorToFloor = async (floorId: string, doorData: any): Promise<any> => {
+    console.log('🚪 Adding door to floor:', floorId, doorData)
+    
+    // Create door first
+    const door = await client<{data: any}>('/api/doors', {
+      method: 'POST',
+      body: { 
+        data: {
+          Width: doorData.width || 80,
+          Height: doorData.height || 200,
+          Position: doorData.position || { x: 0, y: 0, orientation: 'front' },
+          DoorType: doorData.type || 'Standard'
+        }
+      }
+    })
+    
+    console.log('✅ Door created:', door.data)
+    
+    // Connect door to floor
+    await client(`/api/floors/${floorId}`, {
+      method: 'PUT',
+      body: {
+        data: {
+          Doors: [door.data.documentId]
+        }
+      }
+    })
+    
+    console.log('🔗 Door connected to floor')
+    return door.data
+  }
+
+  // Helper function to add a window to a floor (for testing the full flow)
+  const addWindowToFloor = async (floorId: string, windowData: any): Promise<any> => {
+    console.log('🪟 Adding window to floor:', floorId, windowData)
+    
+    // Create window first
+    const window = await client<{data: any}>('/api/windows', {
+      method: 'POST', 
+      body: {
+        data: {
+          Width: windowData.width || 100,
+          Height: windowData.height || 120,
+          Position: windowData.position || { x: 100, y: 0, orientation: 'front' },
+          WindowType: windowData.type || 'Standard'
+        }
+      }
+    })
+    
+    console.log('✅ Window created:', window.data)
+    
+    // Connect window to floor
+    await client(`/api/floors/${floorId}`, {
+      method: 'PUT',
+      body: {
+        data: {
+          Windows: [window.data.documentId]
+        }
+      }
+    })
+    
+    console.log('🔗 Window connected to floor')
+    return window.data
+  }
+
+  // Basic project creation for onboarding - NO building/floor creation
+  const createBasicProject = async (project: Omit<Project, 'id'>): Promise<Project> => {
+    // Get current user for relation
+    const { currentUser } = useAuth()
+    const userId = currentUser.value?.id
+    
+    if (!userId) {
+      throw new Error('User must be authenticated to create projects')
+    }
+    
+    // Extract required fields from project metadata (populated by onboarding)
+    const metadata = project.metadata || {}
+    
+    // Generate unique ProjectID
+    const sanitizeProjectId = (name: string): string => {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9-_.~]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 30)
+    }
+    
+    const generateUniqueProjectId = (name: string, userId: string): string => {
+      const sanitizedName = sanitizeProjectId(name)
+      const timestamp = Date.now().toString().slice(-8)
+      const userIdSuffix = userId.toString().slice(-4)
+      return `${sanitizedName}-${timestamp}-${userIdSuffix}`
+    }
+    
+    // Create project with ONLY basic metadata - NO building structures
+    const basicProjectData = {
+      ProjectID: project.name ? generateUniqueProjectId(project.name, userId.toString()) : `project-${Date.now()}-${userId}`,
+      ProjectName: project.name || 'My Project',
+      Scope: 'Full renovation',
+      ProjectStatus: 'Setup',
+      GeneralAttributes: project.generalAttributes || {},
+      users_permissions_user: userId,
+      Description: project.description || ''
+    }
+    
+    // Store onboarding metadata in GeneralAttributes
+    if (metadata && Object.keys(metadata).length > 0) {
+      basicProjectData.GeneralAttributes = {
+        ...basicProjectData.GeneralAttributes,
+        metadata: metadata
+      }
+    }
+    
+    console.log('🔍 Creating basic project (onboarding):', JSON.stringify(basicProjectData, null, 2))
+    
+    // Create project with retry logic for unique ID
+    let createdProject: any
+    let attempt = 0
+    const maxAttempts = 3
+    
+    while (attempt < maxAttempts) {
+      try {
+        if (attempt > 0) {
+          const retryTimestamp = Date.now().toString().slice(-8)
+          const randomSuffix = Math.random().toString(36).substring(2, 6)
+          basicProjectData.ProjectID = project.name 
+            ? `${sanitizeProjectId(project.name)}-${retryTimestamp}-${randomSuffix}`
+            : `project-${retryTimestamp}-${randomSuffix}-${userId}`
+          console.log(`🔄 Retry attempt ${attempt + 1} with new ProjectID: ${basicProjectData.ProjectID}`)
+        }
+        
+        const projectResponse = await client<{data: any}>('/api/projects', {
+          method: 'POST',
+          body: { data: basicProjectData }
+        })
+        
+        console.log('✅ Basic project created successfully:', projectResponse)
+        createdProject = projectResponse.data
+        break
+        
+      } catch (error: any) {
+        attempt++
+        
+        const isUniqueError = error.data?.error?.message?.includes('unique') || 
+                             error.data?.error?.details?.errors?.some((e: any) => 
+                               e.path?.includes('ProjectID') && e.message?.includes('unique'))
+        
+        if (isUniqueError && attempt < maxAttempts) {
+          console.warn(`⚠️ ProjectID '${basicProjectData.ProjectID}' already exists, retrying with new ID...`)
+          continue
+        }
+        
+        console.error('❌ Basic project creation failed:', error)
+        throw error
+      }
+    }
+    
+    // Return the basic project - NO building creation for onboarding
+    return await loadProject(createdProject.documentId)
+  }
+
+  // Full project creation with building/floor relations - for actual house building
   const createProjectWithRelations = async (project: Omit<Project, 'id'>): Promise<Project> => {
     // Get current user for relation
     const { currentUser } = useAuth()
@@ -447,8 +628,26 @@ export const useStrapi = () => {
     const metadata = project.metadata || {}
     
     // Phase 1: Create project with ONLY the fields that ACTUALLY exist in Strapi
+    // Sanitize ProjectID to match Strapi's regex validation: /^[A-Za-z0-9-_.~]*$/
+    const sanitizeProjectId = (name: string): string => {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9-_.~]/g, '-') // Replace any invalid characters with hyphens
+        .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+        .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+        .substring(0, 30) // Leave room for timestamp
+    }
+    
+    // Generate unique ProjectID by combining sanitized name with timestamp and user ID
+    const generateUniqueProjectId = (name: string, userId: string): string => {
+      const sanitizedName = sanitizeProjectId(name)
+      const timestamp = Date.now().toString().slice(-8) // Last 8 digits of timestamp
+      const userIdSuffix = userId.toString().slice(-4) // Last 4 digits of user ID
+      return `${sanitizedName}-${timestamp}-${userIdSuffix}`
+    }
+    
     const basicProjectData = {
-      ProjectID: project.name ? project.name.toLowerCase().replace(/\s+/g, '-') : `project-${Date.now()}`,
+      ProjectID: project.name ? generateUniqueProjectId(project.name, userId.toString()) : `project-${Date.now()}-${userId}`,
       ProjectName: project.name || 'My Project',
       Scope: 'Full renovation', // Required field - use a valid enum value from Strapi
       ProjectStatus: 'Setup', // Must match Strapi enum exactly (capital S)
@@ -467,33 +666,62 @@ export const useStrapi = () => {
     
     console.log('🔍 DEBUG: Project data being sent to Strapi:', JSON.stringify(basicProjectData, null, 2))
     
-    try {
-      const projectResponse = await client<{data: any}>('/api/projects', {
-        method: 'POST',
-        body: { data: basicProjectData }
-      })
-      
-      console.log('✅ Project created successfully:', projectResponse)
-      return projectResponse
-    } catch (error: any) {
-      console.error('❌ STRAPI ERROR DETAILS:')
-      console.error('Status:', error.status || error.statusCode)
-      console.error('Status Text:', error.statusText)
-      console.error('Error Data:', error.data)
-      console.error('Error Message:', error.message)
-      
-      if (error.data?.error) {
-        console.error('Strapi Error Object:', JSON.stringify(error.data.error, null, 2))
-        if (error.data.error.details) {
-          console.error('Validation Details:', JSON.stringify(error.data.error.details, null, 2))
-        }
-      }
-      
-      // Re-throw with more context
-      throw error
-    }
+    let createdProject: any
+    let attempt = 0
+    const maxAttempts = 3
     
-    const createdProject = projectResponse.data
+    while (attempt < maxAttempts) {
+      try {
+        // If this is a retry attempt, generate a new unique ID
+        if (attempt > 0) {
+          const retryTimestamp = Date.now().toString().slice(-8)
+          const randomSuffix = Math.random().toString(36).substring(2, 6)
+          basicProjectData.ProjectID = project.name 
+            ? `${sanitizeProjectId(project.name)}-${retryTimestamp}-${randomSuffix}`
+            : `project-${retryTimestamp}-${randomSuffix}-${userId}`
+          console.log(`🔄 Retry attempt ${attempt + 1} with new ProjectID: ${basicProjectData.ProjectID}`)
+        }
+        
+        const projectResponse = await client<{data: any}>('/api/projects', {
+          method: 'POST',
+          body: { data: basicProjectData }
+        })
+        
+        console.log('✅ Project created successfully:', projectResponse)
+        createdProject = projectResponse.data
+        break // Success, exit retry loop
+        
+      } catch (error: any) {
+        attempt++
+        
+        // Check if this is a ProjectID uniqueness error
+        const isUniqueError = error.data?.error?.message?.includes('unique') || 
+                             error.data?.error?.details?.errors?.some((e: any) => 
+                               e.path?.includes('ProjectID') && e.message?.includes('unique'))
+        
+        if (isUniqueError && attempt < maxAttempts) {
+          console.warn(`⚠️ ProjectID '${basicProjectData.ProjectID}' already exists, retrying with new ID...`)
+          continue // Try again with new ID
+        }
+        
+        // Log error details for debugging
+        console.error('❌ STRAPI ERROR DETAILS:')
+        console.error('Status:', error.status || error.statusCode)
+        console.error('Status Text:', error.statusText)
+        console.error('Error Data:', error.data)
+        console.error('Error Message:', error.message)
+        
+        if (error.data?.error) {
+          console.error('Strapi Error Object:', JSON.stringify(error.data.error, null, 2))
+          if (error.data.error.details) {
+            console.error('Validation Details:', JSON.stringify(error.data.error.details, null, 2))
+          }
+        }
+        
+        // Re-throw with more context
+        throw error
+      }
+    }
     
     // Phase 2: Create building with relations
     await saveBuildingRelations(createdProject.documentId, project)
@@ -709,24 +937,63 @@ export const useStrapi = () => {
       const floorData = floorsData[i]
       const existingFloor = existingFloors.find((f: any) => f.Storey === floorData.Storey)
       
+      // Separate windows and doors from floor data
+      const windowsData = floorData.Windows || []
+      const doorsData = floorData.Doors || []
+      
+      // Create floor data WITH Windows/Doors (required by Strapi)
+      const basicFloorData = { 
+        ...floorData,
+        Windows: windowsData, // Include windows data for Strapi validation
+        Doors: doorsData      // Include doors data for Strapi validation
+      }
+      
+      let floorId: string
+      
       if (existingFloor) {
         // Update existing floor
         console.log(`🔄 Updating existing floor (Storey ${floorData.Storey})...`)
-        console.log(`🔍 Floor data for update:`, JSON.stringify(floorData, null, 2))
+        console.log(`🔍 Basic floor data for update:`, JSON.stringify(basicFloorData, null, 2))
         await client(`/api/floors/${existingFloor.documentId}`, {
           method: 'PUT',
-          body: { data: floorData }
+          body: { data: basicFloorData }
         })
-        floorIds.push(existingFloor.documentId)
+        floorId = existingFloor.documentId
+        floorIds.push(floorId)
       } else {
         // Create new floor
         console.log(`🆕 Creating new floor (Storey ${floorData.Storey})...`)
-        console.log(`🔍 Floor data being sent:`, JSON.stringify(floorData, null, 2))
-        const newFloor = await client('/api/floors', {
-          method: 'POST',
-          body: { data: floorData }
-        })
-        floorIds.push(newFloor.data.documentId)
+        console.log(`🔍 Basic floor data being sent:`, JSON.stringify(basicFloorData, null, 2))
+        
+        let newFloor
+        try {
+          newFloor = await client('/api/floors', {
+            method: 'POST',
+            body: { data: basicFloorData }
+          })
+        } catch (floorError: any) {
+          console.error('❌ Floor creation failed!')
+          console.error('Floor error status:', floorError.status || floorError.statusCode)
+          console.error('Floor error data:', floorError.data)
+          if (floorError.data?.error) {
+            console.error('Floor Strapi error details:', JSON.stringify(floorError.data.error, null, 2))
+          }
+          console.error('Floor data that failed:', JSON.stringify(basicFloorData, null, 2))
+          throw floorError
+        }
+        floorId = newFloor.data.documentId
+        floorIds.push(floorId)
+      }
+      
+      // Now handle windows and doors as separate entities if they exist
+      if (windowsData.length > 0) {
+        console.log(`🪟 Creating ${windowsData.length} windows for floor ${floorData.Storey}...`)
+        await createWindowsForFloor(floorId, windowsData)
+      }
+      
+      if (doorsData.length > 0) {
+        console.log(`🚪 Creating ${doorsData.length} doors for floor ${floorData.Storey}...`)
+        await createDoorsForFloor(floorId, doorsData)
       }
     }
     
@@ -741,6 +1008,64 @@ export const useStrapi = () => {
     })
     
     console.log(`✅ Updated building with ${floorIds.length} floors`)
+  }
+
+  // Helper function to create windows for a floor
+  const createWindowsForFloor = async (floorId: string, windowsData: any[]): Promise<void> => {
+    const windowIds: string[] = []
+    
+    for (const windowData of windowsData) {
+      try {
+        const windowResponse = await client('/api/windows', {
+          method: 'POST',
+          body: { data: windowData }
+        })
+        windowIds.push(windowResponse.data.documentId)
+      } catch (error) {
+        console.warn('⚠️ Failed to create window:', error)
+      }
+    }
+    
+    // Link windows to floor
+    if (windowIds.length > 0) {
+      await client(`/api/floors/${floorId}`, {
+        method: 'PUT',
+        body: { 
+          data: { 
+            Windows: windowIds
+          } 
+        }
+      })
+    }
+  }
+
+  // Helper function to create doors for a floor
+  const createDoorsForFloor = async (floorId: string, doorsData: any[]): Promise<void> => {
+    const doorIds: string[] = []
+    
+    for (const doorData of doorsData) {
+      try {
+        const doorResponse = await client('/api/doors', {
+          method: 'POST',
+          body: { data: doorData }
+        })
+        doorIds.push(doorResponse.data.documentId)
+      } catch (error) {
+        console.warn('⚠️ Failed to create door:', error)
+      }
+    }
+    
+    // Link doors to floor
+    if (doorIds.length > 0) {
+      await client(`/api/floors/${floorId}`, {
+        method: 'PUT',
+        body: { 
+          data: { 
+            Doors: doorIds
+          } 
+        }
+      })
+    }
   }
 
   // Helper function to update roof relations
@@ -856,16 +1181,46 @@ export const useStrapi = () => {
         const createOperation = 'Create New Building'
         console.log(`🆕 ${createOperation} - Starting...`)
         
-        const buildingResponse = await client<{data: any}>('/api/buildings', {
-          method: 'POST',
-          body: { data: buildingData }
-        })
+        // For new buildings, create with minimal data first, then add relations
+        const minimalBuildingData = {
+          Description: buildingData.Description,
+          // Don't include floors or Roof in initial creation - will add as relations
+        }
+        
+        console.log('📦 Minimal building data being sent to Strapi:', JSON.stringify(minimalBuildingData, null, 2))
+        
+        let buildingResponse: any
+        try {
+          buildingResponse = await client<{data: any}>('/api/buildings', {
+            method: 'POST',
+            body: { data: minimalBuildingData }
+          })
+        } catch (buildingError: any) {
+          console.error('❌ Building creation failed!')
+          console.error('Status:', buildingError.status || buildingError.statusCode)
+          console.error('Error data:', buildingError.data)
+          if (buildingError.data?.error) {
+            console.error('Strapi error details:', JSON.stringify(buildingError.data.error, null, 2))
+          }
+          throw buildingError
+        }
         
         const newBuildingId = buildingResponse.data.documentId
         console.log(`✅ ${createOperation} - Success:`, {
           buildingId: newBuildingId,
           hasDocumentId: !!newBuildingId
         })
+        
+        // Now add floors and roof as relations
+        if (buildingData.floors && buildingData.floors.length > 0) {
+          console.log('🏗️ Adding floors to building...')
+          await updateFloorsAsRelations(newBuildingId, buildingData.floors)
+        }
+        
+        if (buildingData.Roof && buildingData.Roof.length > 0) {
+          console.log('🏠 Adding roof to building...')
+          await updateRoofRelations(newBuildingId, buildingData.Roof)
+        }
         
         // Connect building to project
         const connectOperation = `Connect Building to Project (${newBuildingId} -> ${projectId})`
@@ -2019,6 +2374,8 @@ export const useStrapi = () => {
     saveProject,
     updateProject,
     createProject,
+    addDoorToFloor,
+    addWindowToFloor,
     // Delete operations
     deleteWindow,
     deleteDoor,

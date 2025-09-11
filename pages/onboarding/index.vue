@@ -538,12 +538,10 @@ const completeOnboarding = async () => {
       }
     }
     
-    // Save project to Strapi
-    console.log('🏗️ ONBOARDING: Preparing to save project')
+    // No longer saving project here - let the guided builder handle project creation
+    // This prevents duplicate project creation between onboarding completion and guided builder
+    console.log('🏗️ ONBOARDING: Redirecting to guided builder for project creation')
     console.log('📦 Project data from onboarding:', JSON.stringify(projectData, null, 2))
-    
-    const { saveProject } = useProject()
-    await saveProject(projectData)
     
     // Redirect to builder
     await navigateTo('/builder')

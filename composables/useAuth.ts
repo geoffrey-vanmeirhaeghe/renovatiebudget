@@ -171,23 +171,52 @@ export const useAuth = () => {
       // Redirect to onboarding
       await navigateTo('/onboarding')
     } catch (error: any) {
-      let errorMessage = 'Registration failed'
-      
-      if (error.data?.error?.message) {
-        errorMessage = error.data.error.message
-      } else if (error.statusCode === 400) {
-        const details = error.data?.error?.details
-        if (details?.errors?.length > 0) {
-          errorMessage = details.errors[0].message
+      // Check if the error is because the email already exists
+      if (error.statusCode === 400) {
+        const errorMsg = error.data?.error?.message?.toLowerCase() || ''
+        
+        // If email/username is already taken, try to login instead
+        if (errorMsg.includes('email') && errorMsg.includes('taken') || 
+            errorMsg.includes('username') && errorMsg.includes('taken') ||
+            errorMsg.includes('already exists')) {
+          
+          console.log('🔄 User already exists, attempting to login instead...')
+          
+          // Try to login with the same credentials
+          try {
+            await login(data.email, data.password)
+            
+            // If login succeeds and user is in onboarding phase, continue to onboarding
+            if (currentUser.value?.userPhase === 'onboarding') {
+              console.log('✅ Logged in successfully, continuing onboarding...')
+              return // Success - login handled the navigation
+            }
+          } catch (loginError) {
+            // Login failed - the password might be different
+            authError.value = 'An account with this email already exists. Please login with your existing password.'
+            throw new Error('An account with this email already exists. Please login with your existing password.')
+          }
         } else {
-          errorMessage = 'Please check your registration details'
+          // Other validation error
+          const details = error.data?.error?.details
+          if (details?.errors?.length > 0) {
+            authError.value = details.errors[0].message
+            throw new Error(details.errors[0].message)
+          } else {
+            authError.value = 'Please check your registration details'
+            throw new Error('Please check your registration details')
+          }
         }
+      } else if (error.data?.error?.message) {
+        authError.value = error.data.error.message
+        throw new Error(error.data.error.message)
       } else if (error.message) {
-        errorMessage = error.message
+        authError.value = error.message
+        throw new Error(error.message)
+      } else {
+        authError.value = 'Registration failed'
+        throw new Error('Registration failed')
       }
-      
-      authError.value = errorMessage
-      throw new Error(errorMessage)
     } finally {
       isLoading.value = false
     }

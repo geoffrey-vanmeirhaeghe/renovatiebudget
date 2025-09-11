@@ -266,7 +266,7 @@ definePageMeta({
 const { currentUser, getUserRegion, logout } = useAuth()
 
 // Get project data
-const { currentProject, loadProject } = useProject()
+const { currentProject, loadUserCurrentProject } = useProject()
 
 // Get renovation works data
 const { 
@@ -356,26 +356,25 @@ const enterBuilder = () => {
   navigateTo('/builder')
 }
 
-
-// Load project data on mount
+// Load user's current project and works on mount
 onMounted(async () => {
-  try {
-    const { loadProject } = useProject()
-    console.log('🏠 Loading dashboard with user context')
-    console.log('User:', currentUser.value?.firstName, currentUser.value?.address?.municipality)
-    
-    // Load project data (fallback to mock if Strapi unavailable)
-    await loadProject('ca66f5looy2mij5rua9yj987', true)
-    
-    // Load renovation works (using user ID when auth is ready, for now load all)
-    await loadWorks()
-  } catch (error) {
-    console.error('Failed to load Strapi data, falling back to mock data:', error)
-    const { loadProject } = useProject()
-    await loadProject()
-    await loadWorks()
+  console.log('📊 Dashboard loading - fetching user data...')
+  
+  // Load user's current project
+  if (!currentProject.value) {
+    console.log('🏠 No project loaded, loading user\'s current project...')
+    await loadUserCurrentProject()
   }
+  
+  // Load renovation works
+  console.log('🔨 Loading renovation works...')
+  await loadWorks()
+  
+  console.log('✅ Dashboard data loaded successfully')
 })
+
+
+// Removed - now handled by the onMounted above
 
 // Handle work activation
 const handleActivateWork = async (workId: string) => {
