@@ -44,6 +44,7 @@ interface Props {
 
 interface Emits {
   (e: 'updateStartDate', workId: string, date: Date | null): void
+  (e: 'openPlanning'): void
 }
 
 const props = defineProps<Props>()

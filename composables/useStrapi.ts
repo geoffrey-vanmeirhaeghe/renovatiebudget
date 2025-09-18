@@ -2031,17 +2031,23 @@ export const useStrapi = () => {
       // Map to Strapi's expected field names and values
       const strapiData = {
         Name: workData.name,
-        Description: workData.description,
-        Budget: workData.budget,
+        Description: workData.description || '',
+        Budget: workData.budget || 0,
         ScheduledStatus: workData.status ? 
-          workData.status.charAt(0).toUpperCase() + workData.status.slice(1) : 'Planned',
+          workData.status.charAt(0).toUpperCase() + workData.status.slice(1) : 'Future',
         executionType: workData.executionType || 'DIY',
-        Timeline: workData.timeline ? 
-          workData.timeline.charAt(0).toUpperCase() + workData.timeline.slice(1) : 'Now',
-        Year: workData.year || new Date().getFullYear(),
         canActivate: workData.canActivate || false,
         progress: workData.progress || 0,
         Contractor: workData.contractor || { name: null, phone: null, email: null }
+      }
+
+      // Handle startDate or fallback to Timeline/Year for backward compatibility
+      if (workData.startDate) {
+        strapiData.StartDate = workData.startDate
+      } else if (workData.timeline || workData.year) {
+        strapiData.Timeline = workData.timeline ? 
+          workData.timeline.charAt(0).toUpperCase() + workData.timeline.slice(1) : 'Now'
+        strapiData.Year = workData.year || new Date().getFullYear()
       }
       
       // Add user relation - get current user if not provided
@@ -2052,7 +2058,7 @@ export const useStrapi = () => {
       }
       
       if (userId) {
-        strapiData.user = userId
+        strapiData.users_permissions_user = userId
       } else {
         throw new Error('User must be authenticated to create renovation works')
       }

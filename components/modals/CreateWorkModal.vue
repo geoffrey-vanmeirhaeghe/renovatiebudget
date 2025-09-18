@@ -68,36 +68,19 @@
                     <label class="form-label" for="workStatus">Status</label>
                     <select id="workStatus" v-model="formData.status" class="form-select">
                       <option value="future">Future Planning</option>
-                      <option value="planned">Ready to Activate</option>
                       <option value="active">Start Immediately</option>
                     </select>
                   </div>
                   <div class="form-field">
-                    <label class="form-label" for="workTimeline">Timeline</label>
-                    <select id="workTimeline" v-model="formData.timeline" class="form-select">
-                      <option value="now">Now</option>
-                      <option value="Q1">Q1</option>
-                      <option value="Q2">Q2</option>
-                      <option value="Q3">Q3</option>
-                      <option value="Q4">Q4</option>
-                    </select>
+                    <label class="form-label" for="workStartDate">Start Date</label>
+                    <input 
+                      id="workStartDate"
+                      v-model="formData.startDate"
+                      type="date"
+                      class="form-input"
+                      :min="minDate"
+                    />
                   </div>
-                </div>
-                <div class="form-field" v-if="formData.timeline !== 'now'">
-                  <label class="form-label" for="workYear">Year</label>
-                  <select 
-                    id="workYear"
-                    v-model.number="formData.year"
-                    class="form-select"
-                  >
-                    <option 
-                      v-for="year in availableYears" 
-                      :key="year" 
-                      :value="year"
-                    >
-                      {{ year }}
-                    </option>
-                  </select>
                 </div>
               </div>
 
@@ -141,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import type { RenovationWork, ExecutionType, WorkStatus, TimelineType } from '~/types/renovationWork'
+import type { RenovationWork, ExecutionType, WorkStatus } from '~/types/renovationWork'
 
 const props = defineProps<{
   isOpen: boolean
@@ -159,10 +142,9 @@ const formData = ref({
   name: '',
   description: '',
   budget: 0,
-  status: 'planned' as WorkStatus,
+  status: 'future' as WorkStatus,
   executionType: 'DIY' as ExecutionType,
-  timeline: 'now' as TimelineType,
-  year: currentYear,
+  startDate: ''
 })
 
 // Computed properties
@@ -170,16 +152,8 @@ const isFormValid = computed(() => {
   return formData.value.name.trim() !== '' && formData.value.budget > 0
 })
 
-const availableYears = computed(() => {
-  const currentYear = new Date().getFullYear()
-  const years = []
-  // Add previous year for completion of past projects
-  years.push(currentYear - 1)
-  // Add current year and next 10 years
-  for (let i = 0; i <= 10; i++) {
-    years.push(currentYear + i)
-  }
-  return years
+const minDate = computed(() => {
+  return new Date().toISOString().split('T')[0]
 })
 
 // Methods
@@ -205,10 +179,9 @@ const resetForm = () => {
     name: '',
     description: '',
     budget: 0,
-    status: 'planned' as WorkStatus,
+    status: 'future' as WorkStatus,
     executionType: 'DIY' as ExecutionType,
-    timeline: 'now' as TimelineType,
-    year: currentYear,
+    startDate: ''
   }
 }
 
