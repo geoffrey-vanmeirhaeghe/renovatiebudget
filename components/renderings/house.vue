@@ -36,9 +36,9 @@
         >
         <Box
             :args="[
-            safeFloorSize.depth / 100,
+            getFloorDimension(floor, 'depth') / 100,
             (floor.height || 280) / 100,
-            safeFloorSize.width / 100,
+            getFloorDimension(floor, 'width') / 100,
             ]"
             :position="[
             (floor.positionZ || 0) / 100,
@@ -92,11 +92,11 @@
             <!-- Invisible clickable box overlay for roof selection -->
             <Box
                 :args="[
-                    project.roof.depth / 100,
-                    project.roof.height / 100,
-                    project.roof.width / 100
+                    (project.roof.depth || 1000) / 100,
+                    (project.roof.height || 300) / 100,
+                    (project.roof.width || 1000) / 100
                 ]"
-                :position="[0, project.roof.height / 200, 0]"
+                :position="[0, (project.roof.height || 300) / 200, 0]"
                 @click="selectRoof"
                 @pointer-enter="hoverRoof(project.roof)"
                 @pointer-leave="clearHover"

@@ -38,6 +38,12 @@
                 </svg>
                 Uploads
               </button>
+              <button class="header-btn btn-delete" @click="handleDeleteWork">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                </svg>
+                Delete
+              </button>
               <button class="close-button" @click="close">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M6 6l12 12M6 18L18 6" />
@@ -628,6 +634,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   update: [work: RenovationWork]
+  delete: [workId: string]
 }>()
 
 // Get renovation works functions
@@ -808,6 +815,16 @@ const handleUpdateStartDate = async (workId: string, date: Date | null) => {
   } catch (error) {
     console.error('Failed to update work:', error)
   }
+}
+
+// Handle work deletion
+const handleDeleteWork = async () => {
+  if (!confirm('Are you sure you want to delete this work item? This action cannot be undone.')) {
+    return
+  }
+  
+  emit('delete', localWork.value.id)
+  emit('close')
 }
 
 // Work completion method

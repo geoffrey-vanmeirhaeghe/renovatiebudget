@@ -240,6 +240,7 @@
       :is-open="isModalOpen"
       @close="closeWorkDetail"
       @update="handleWorkUpdate"
+      @delete="handleWorkDelete"
     />
 
     <!-- Create Work Modal -->
@@ -280,6 +281,7 @@ const {
   deactivateWork,
   updateWork,
   createWork,
+  deleteWork,
   completeWork
 } = useRenovationWorks()
 
@@ -452,6 +454,14 @@ const closeWorkDetail = () => {
 
 const handleWorkUpdate = (updatedWork: RenovationWork) => {
   updateWork(updatedWork.id, updatedWork)
+}
+
+const handleWorkDelete = async (workId: string) => {
+  const success = await deleteWork(workId)
+  if (success) {
+    console.log('✅ Work deleted successfully')
+    closeWorkDetail()
+  }
 }
 
 const handleCreateWork = async (workData: Partial<RenovationWork>) => {

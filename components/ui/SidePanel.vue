@@ -160,6 +160,79 @@
         </div>
       </div>
 
+      <!-- Roof Dimensions -->
+      <div v-if="selectedObject.type === 'roof'" class="property-section">
+        <h4>Roof Dimensions</h4>
+        <div class="property-group">
+          <label>Width:</label>
+          <input 
+            type="range" 
+            :min="Math.round(convertToDisplay(500))" 
+            :max="Math.round(convertToDisplay(3000))" 
+            :step="Math.round(convertToDisplay(10))"
+            :value="getRoofDimension('width')"
+            @input="updateRoofDimension('width', $event.target.value)"
+            class="slider"
+          >
+          <input 
+            type="number"
+            :min="Math.round(convertToDisplay(500))"
+            :max="Math.round(convertToDisplay(3000))"
+            :step="Math.round(convertToDisplay(10))"
+            :value="getRoofDimension('width')"
+            @input="updateRoofDimension('width', $event.target.value)"
+            class="number-input"
+          >
+          <span class="unit">{{ getDisplayUnit() }}</span>
+        </div>
+        
+        <div class="property-group">
+          <label>Depth:</label>
+          <input 
+            type="range" 
+            :min="Math.round(convertToDisplay(500))" 
+            :max="Math.round(convertToDisplay(3000))" 
+            :step="Math.round(convertToDisplay(10))"
+            :value="getRoofDimension('depth')"
+            @input="updateRoofDimension('depth', $event.target.value)"
+            class="slider"
+          >
+          <input 
+            type="number"
+            :min="Math.round(convertToDisplay(500))"
+            :max="Math.round(convertToDisplay(3000))"
+            :step="Math.round(convertToDisplay(10))"
+            :value="getRoofDimension('depth')"
+            @input="updateRoofDimension('depth', $event.target.value)"
+            class="number-input"
+          >
+          <span class="unit">{{ getDisplayUnit() }}</span>
+        </div>
+        
+        <div class="property-group">
+          <label>Height:</label>
+          <input 
+            type="range" 
+            :min="Math.round(convertToDisplay(100))" 
+            :max="Math.round(convertToDisplay(800))" 
+            :step="Math.round(convertToDisplay(5))"
+            :value="getRoofDimension('height')"
+            @input="updateRoofDimension('height', $event.target.value)"
+            class="slider"
+          >
+          <input 
+            type="number"
+            :min="Math.round(convertToDisplay(100))"
+            :max="Math.round(convertToDisplay(800))"
+            :step="Math.round(convertToDisplay(5))"
+            :value="getRoofDimension('height')"
+            @input="updateRoofDimension('height', $event.target.value)"
+            class="number-input"
+          >
+          <span class="unit">{{ getDisplayUnit() }}</span>
+        </div>
+      </div>
+
       <!-- Roof Position -->
       <div v-if="selectedObject.type === 'roof'" class="property-section">
         <h4>Roof Position</h4>
@@ -248,6 +321,106 @@
               :title="color.name"
             ></button>
           </div>
+        </div>
+      </div>
+
+      <!-- Floor Dimensions -->
+      <div v-if="selectedObject.type === 'floor'" class="property-section">
+        <h4>Floor Dimensions</h4>
+        <div class="property-group">
+          <label>Width:</label>
+          <input 
+            type="range" 
+            :min="Math.round(convertToDisplay(500))" 
+            :max="Math.round(convertToDisplay(3000))" 
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorDimension('width')"
+            @input="updateFloorDimension('width', $event.target.value)"
+            class="slider"
+          >
+          <input 
+            type="number"
+            :min="Math.round(convertToDisplay(500))"
+            :max="Math.round(convertToDisplay(3000))"
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorDimension('width')"
+            @input="updateFloorDimension('width', $event.target.value)"
+            class="number-input"
+          >
+          <span class="unit">{{ getDisplayUnit() }}</span>
+        </div>
+        
+        <div class="property-group">
+          <label>Depth:</label>
+          <input 
+            type="range" 
+            :min="Math.round(convertToDisplay(500))" 
+            :max="Math.round(convertToDisplay(3000))" 
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorDimension('depth')"
+            @input="updateFloorDimension('depth', $event.target.value)"
+            class="slider"
+          >
+          <input 
+            type="number"
+            :min="Math.round(convertToDisplay(500))"
+            :max="Math.round(convertToDisplay(3000))"
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorDimension('depth')"
+            @input="updateFloorDimension('depth', $event.target.value)"
+            class="number-input"
+          >
+          <span class="unit">{{ getDisplayUnit() }}</span>
+        </div>
+      </div>
+
+      <!-- Floor Position -->
+      <div v-if="selectedObject.type === 'floor'" class="property-section">
+        <h4>Floor Position</h4>
+        <div class="property-group">
+          <label>X Position:</label>
+          <input 
+            type="range" 
+            :min="Math.round(convertToDisplay(-1000))" 
+            :max="Math.round(convertToDisplay(1000))" 
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorPosition('x')"
+            @input="updateFloorPosition('x', $event.target.value)"
+            class="slider"
+          >
+          <input 
+            type="number"
+            :min="Math.round(convertToDisplay(-1000))"
+            :max="Math.round(convertToDisplay(1000))"
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorPosition('x')"
+            @input="updateFloorPosition('x', $event.target.value)"
+            class="number-input"
+          >
+          <span class="unit">{{ getDisplayUnit() }}</span>
+        </div>
+        
+        <div class="property-group">
+          <label>Z Position:</label>
+          <input 
+            type="range" 
+            :min="Math.round(convertToDisplay(-1000))" 
+            :max="Math.round(convertToDisplay(1000))" 
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorPosition('z')"
+            @input="updateFloorPosition('z', $event.target.value)"
+            class="slider"
+          >
+          <input 
+            type="number"
+            :min="Math.round(convertToDisplay(-1000))"
+            :max="Math.round(convertToDisplay(1000))"
+            :step="Math.round(convertToDisplay(10))"
+            :value="getFloorPosition('z')"
+            @input="updateFloorPosition('z', $event.target.value)"
+            class="number-input"
+          >
+          <span class="unit">{{ getDisplayUnit() }}</span>
         </div>
       </div>
 
@@ -969,6 +1142,102 @@ const updateRoofHorizontalPosition = (position: 'positionX' | 'positionZ', value
   
   // Set the position on the roof
   updatedProject.roof[position] = cmValue
+  
+  updateProject(updatedProject)
+}
+
+// Floor dimension functions
+const getFloorDimension = (dimension: 'width' | 'depth') => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'floor') return 0
+  
+  const floor = currentProject.value.floors[selectedObject.value.id]
+  if (!floor) return 0
+  
+  // Get from floor if available, otherwise fall back to general attributes
+  let value = 0
+  if (dimension === 'width') {
+    value = floor.width || currentProject.value.generalAttributes.floorSize.width || 1000
+  } else {
+    value = floor.depth || currentProject.value.generalAttributes.floorSize.depth || 1000
+  }
+  
+  return Math.round(convertToDisplay(value))
+}
+
+const updateFloorDimension = (dimension: 'width' | 'depth', value: string) => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'floor') return
+  
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Update the specific floor
+  if (!updatedProject.floors[selectedObject.value.id]) return
+  updatedProject.floors[selectedObject.value.id][dimension] = cmValue
+  
+  // Also update general attributes if this is the main floor
+  if (selectedObject.value.id === '0') {
+    updatedProject.generalAttributes.floorSize[dimension] = cmValue
+  }
+  
+  updateProject(updatedProject)
+}
+
+// Floor position functions
+const getFloorPosition = (axis: 'x' | 'z') => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'floor') return 0
+  
+  const floor = currentProject.value.floors[selectedObject.value.id]
+  if (!floor) return 0
+  
+  // Get position from floor properties (renderer expects positionX and positionZ)
+  const value = axis === 'x' ? (floor.positionX || 0) : (floor.positionZ || 0)
+  
+  return Math.round(convertToDisplay(value))
+}
+
+const updateFloorPosition = (axis: 'x' | 'z', value: string) => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'floor') return
+  
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Update the specific floor position using the property names the renderer expects
+  if (!updatedProject.floors[selectedObject.value.id]) return
+  
+  const propertyName = axis === 'x' ? 'positionX' : 'positionZ'
+  updatedProject.floors[selectedObject.value.id][propertyName] = cmValue
+  
+  updateProject(updatedProject)
+}
+
+// Roof dimension functions
+const getRoofDimension = (dimension: 'width' | 'depth' | 'height') => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'roof') return 0
+  
+  const roof = currentProject.value.roof
+  if (!roof) return 0
+  
+  // Default roof dimensions if not set
+  let defaultValue = 1000
+  if (dimension === 'height') defaultValue = 300
+  
+  const value = roof[dimension] || defaultValue
+  return Math.round(convertToDisplay(value))
+}
+
+const updateRoofDimension = (dimension: 'width' | 'depth' | 'height', value: string) => {
+  if (!currentProject.value || !selectedObject.value || selectedObject.value.type !== 'roof') return
+  
+  const displayValue = parseInt(value)
+  const cmValue = convertFromDisplay(displayValue)
+  const updatedProject = JSON.parse(JSON.stringify(currentProject.value))
+  
+  // Update the roof dimension
+  if (updatedProject.roof) {
+    updatedProject.roof[dimension] = cmValue
+  }
   
   updateProject(updatedProject)
 }

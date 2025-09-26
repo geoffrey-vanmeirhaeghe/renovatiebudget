@@ -2210,31 +2210,7 @@ export const useStrapi = () => {
     console.log(`🔨 ${operation} - Starting...`)
     
     try {
-      // First, we need to get the actual ID format Strapi expects
-      let strapiId = workId
-      
-      // If the workId looks like a number, keep it. Otherwise it might be a documentId
-      const isNumericId = /^\d+$/.test(workId)
-      
-      if (!isNumericId) {
-        // This might be a documentId, we need to find the actual work
-        // Add user filter for security - only find works belonging to current user
-        const { currentUser } = useAuth()
-        const userId = currentUser.value?.id
-        let endpoint = '/api/renovation-works'
-        if (userId) {
-          endpoint += `?filters[user][id][$eq]=${userId}`
-        }
-        const works = await apiCall(endpoint, { method: 'GET' })
-        const foundWork = works.data.find((w: any) => 
-          w.id === workId || w.documentId === workId
-        )
-        if (foundWork) {
-          strapiId = foundWork.documentId || foundWork.id
-        }
-      }
-      
-      await apiCall(`/api/renovation-works/${strapiId}`, { method: 'DELETE' })
+      await apiCall(`/api/renovation-works/${workId}`, { method: 'DELETE' })
       console.log(`✅ ${operation} - Success`)
       return true
     } catch (error) {

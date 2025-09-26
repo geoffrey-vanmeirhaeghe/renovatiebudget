@@ -65,8 +65,9 @@ const password = ref('')
 const isLoading = ref(false)
 const error = ref('')
 
-// Authentication composable (to be created)
-const { login } = useAuth()
+// Authentication composable - explicit destructuring to avoid auto-import issues
+const authComposable = useAuth()
+const { login } = authComposable
 
 const handleLogin = async () => {
   if (!email.value || !password.value) {
